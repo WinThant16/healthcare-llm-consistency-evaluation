@@ -18,3 +18,5 @@ venv/
 data/raw/uphill/
 # Candidate pools contain source-derived text (Cancer-Myth, UPHILL); regenerate with python -m src.data.build_pools
 data/processed/candidates/
+data/processed/screening/
+data/processed/questions.jsonl
