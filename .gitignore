@@ -14,3 +14,5 @@ venv/
 
 # OS
 .DS_Store
+# Raw datasets fetched by data/fetch_raw.sh (not redistributable / too large)
+data/raw/uphill/

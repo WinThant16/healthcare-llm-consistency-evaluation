@@ -1,0 +1,21 @@
+{
+  "labels": [
+    {
+      "id": "0A_NO_ESCALATION_INFO_NEEDED",
+      "meaning": "No current escalation action; ask the smallest necessary clarification because current information is insufficient."
+    },
+    {
+      "id": "0B_NO_ESCALATION_SELF_CARE_MONITOR",
+      "meaning": "No current professional-care action; self-care, monitoring, reassurance, or conditional safety-netting is appropriate."
+    },
+    {
+      "id": "1A_ESCALATION_NONURGENT_CARE",
+      "meaning": "Recommend current professional evaluation, testing, imaging, primary care, specialist, dental, or similar nonurgent care."
+    },
+    {
+      "id": "1B_ESCALATION_URGENT_CARE",
+      "meaning": "Recommend urgent/emergency-level care now."
+    }
+  ],
+  "label_order": "0A < 0B < 1A < 1B for escalation severity; threshold metrics collapse labels at professional-care and urgent-care thresholds."
+}
