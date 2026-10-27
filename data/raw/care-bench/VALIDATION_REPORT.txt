@@ -1,0 +1,28 @@
+CARE-Bench Hugging Face validation report
+
+Status: PASS
+
+Validated files:
+- cases_public.jsonl: 439 valid JSONL records
+- evaluation_prefixes_public.jsonl: 925 valid JSONL records
+- model_inputs_public.jsonl: 925 valid JSONL records
+- submission_template_public.csv: 925 data rows
+- label_schema.json: valid JSON
+- README.md: valid YAML front matter with four viewer configurations
+
+Case splits: {'validation': 93, 'development': 284, 'public_test_1': 62}
+Prefix splits: {'validation': 181, 'development': 609, 'public_test_1': 135}
+Gold-label counts: {'0A_NO_ESCALATION_INFO_NEEDED': 249, '0B_NO_ESCALATION_SELF_CARE_MONITOR': 162, '1A_ESCALATION_NONURGENT_CARE': 342, '1B_ESCALATION_URGENT_CARE': 172}
+
+Cross-file checks:
+- All case_id references resolve to cases_public.jsonl
+- Prefix IDs match across evaluation_prefixes, model_inputs, and submission_template
+- All primary IDs are unique
+
+SHA-256:
+- README.md: c14f5df98f780937a4b2bd5a011b8e8061baf538d34e92403671116b445296ff
+- cases_public.jsonl: 510dba567dbc8cb338d91f6c9412ff326be8a6a6bdd1ece241926e5315fe9463
+- evaluation_prefixes_public.jsonl: 6d2850f303d05b8f92035c31a11233f41a965e77b3e878e1425f956a00cff534
+- label_schema.json: 805c2f21c576c836a081e3636bcee6efceb33a5150c2c2592b9923602a4b75b3
+- model_inputs_public.jsonl: 3771e69715278580f9c7d013ac622d333fb0f861c387f2a143517ddb6b60f95b
+- submission_template_public.csv: ddd9f65b26a1046a5eb641c0bf16b16deb7c73295a8afe9f1c49bf99c0b3c088
