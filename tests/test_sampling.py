@@ -126,3 +126,17 @@ def test_export_prefills_existing_decisions(dirs, monkeypatch):
     with open(paths[2], encoding="utf-8-sig") as f:
         rows = list(csv.DictReader(f))
     assert len(rows) == 80 and all(r["eligibility_status"] == "include" for r in rows)
+
+
+def test_pilot_covers_slots_and_is_subset_of_main(dirs):
+    pools, pool_dir, decision_dir, tmp = dirs
+    assert sample.build_pilot(pool_dir, decision_dir)[1] == sample.PILOT_SLOTS  # nothing screened yet
+    write_sheet(tmp / "sheet.csv", include_all(pools))
+    screening.import_sheets([tmp / "sheet.csv"], pool_dir, decision_dir)
+    pilot, missing = sample.build_pilot(pool_dir, decision_dir)
+    assert missing == []
+    assert [(p["domain"], p["gold_label_mapped"]) for p in pilot] == sample.PILOT_SLOTS
+    assert [p["group_id"] for p in pilot] == ["onc-901", "onc-902", "ph-901", "tri-901", "tri-902"]
+    assert validate_rows(pilot, "final") == []
+    main_ids = {q["candidate_id"] for q in sample.build(pool_dir, decision_dir)[0]}
+    assert {p["candidate_id"] for p in pilot} <= main_ids

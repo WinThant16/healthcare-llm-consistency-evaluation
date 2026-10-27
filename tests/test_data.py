@@ -81,7 +81,9 @@ def test_cancer_myth_loader():
     rows = cancer_myth.load()
     assert validate_rows(rows) == []
     assert sum(not r["is_control"] for r in rows) == 585
-    assert all(r["eligibility_status"] == "hold" for r in rows if r["is_control"])
+    controls = [r for r in rows if r["is_control"]]
+    assert len(controls) == 150
+    assert all(r["source_evidence"].startswith(cancer_myth.NFP_EVIDENCE) for r in controls)
 
 
 def test_uphill_loader():

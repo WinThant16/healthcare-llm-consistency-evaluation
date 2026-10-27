@@ -1,9 +1,10 @@
 """Cancer-Myth loader → oncology correction candidates.
 
 - ``cancer-myth/validation`` (585): positives, gold ``correction_required``.
-- ``cancer-myth-nfp/nfp`` (150): intended controls, gold ``no_correction``. Every row's
-  ``non_presupposition`` text describes a presupposition, so the control status is unverified and all NFP
-  rows start on ``hold`` until the data and clinical leads confirm them (annotation guide §3).
+- ``cancer-myth-nfp/nfp`` (150): controls, gold ``no_correction``. These are generated questions that an LLM
+  verifier flagged as containing a false presupposition but physicians confirmed contain none (Cancer-Myth
+  paper, review criterion 1). ``non_presupposition`` is the presupposition the LLM *claimed* and physicians
+  rejected, which makes these adversarial overcorrection controls.
 
 Cancer-Myth gives the expert *correction*, not the premise itself, so ``target_false_premise`` stays empty
 for the clinical lead to write from ``source_evidence``.
@@ -15,7 +16,7 @@ from src.data.schema import candidate_id, make_row
 
 POSITIVES = "data/raw/cancer-myth/validation-00000-of-00001.parquet"
 NFP = "data/raw/cancer-myth-nfp/nfp-00000-of-00001.parquet"
-NFP_HOLD_REASON = "NFP control status unverified: non_presupposition text describes a presupposition"
+NFP_EVIDENCE = "Physicians confirmed no false presupposition. LLM-claimed presupposition they rejected: "
 
 
 def load(positives_path=POSITIVES, nfp_path=NFP):
@@ -50,9 +51,8 @@ def load(positives_path=POSITIVES, nfp_path=NFP):
             original_question=r.question.strip(),
             source_label_raw={"non_presupposition": r.non_presupposition, "source_type": r.source_type},
             gold_label_mapped="no_correction",
-            source_evidence=r.non_presupposition.strip(),
-            eligibility_status="hold",
-            eligibility_reason=NFP_HOLD_REASON,
+            source_evidence=NFP_EVIDENCE + r.non_presupposition.strip(),
+            eligibility_status="pending",
             review_status="pending",
             source_meta={"cancer": r.cancer, "from_model": r.from_model, "source_row": int(r.source_row)},
         ))
