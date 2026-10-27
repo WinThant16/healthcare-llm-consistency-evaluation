@@ -3,7 +3,8 @@
 1. Export review sheets (git-ignored; they contain source text):
        python -m src.data.screening export [--oversample 2.0]
    writes data/processed/screening/{domain}.csv: the top-priority candidates per gold label
-   (target × oversample), with any existing decisions prefilled.
+   (target × oversample), with any existing decisions prefilled and advisory ``auto_flags``
+   (src/data/prescreen.py) that never change a decision.
 2. Reviewers fill ``eligibility_status`` (include / exclude / hold), ``eligibility_reason``, ``reviewed_by``,
    ``review_status`` and, for positive correction items, ``target_false_premise``.
 3. Import the filled sheet(s):
@@ -19,6 +20,7 @@ import math
 import sys
 from pathlib import Path
 
+from src.data.prescreen import flags_for
 from src.data.sampling import TARGETS, priority_order, secondary_key
 from src.data.schema import ELIGIBILITY, REVIEW_STATUS, read_jsonl
 
@@ -28,8 +30,8 @@ DECISION_DIR = Path("data/decisions")
 
 DECISION_FIELDS = ["candidate_id", "eligibility_status", "eligibility_reason", "target_false_premise",
                    "reviewed_by", "review_status"]
-SHEET_FIELDS = ["rank", "candidate_id", "gold_label_mapped", "stratum", "original_question", "source_evidence",
-                "source_meta"] + DECISION_FIELDS[1:]
+SHEET_FIELDS = ["rank", "candidate_id", "gold_label_mapped", "stratum", "auto_flags", "original_question",
+                "source_evidence", "source_meta"] + DECISION_FIELDS[1:]
 
 
 def load_pool(domain, pool_dir=POOL_DIR):
@@ -85,7 +87,9 @@ def export(oversample=2.0, pool_dir=POOL_DIR, sheet_dir=SHEET_DIR, decision_dir=
     paths = []
     for domain, targets in TARGETS.items():
         decisions = load_decisions(domain, decision_dir)
-        ordered = priority_order(apply_decisions(load_pool(domain, pool_dir), decisions))
+        rows = apply_decisions(load_pool(domain, pool_dir), decisions)
+        flags = flags_for(rows)
+        ordered = priority_order(rows)
         sheet = []
         for gold, target in targets.items():
             for rank, row in enumerate(ordered.get(gold, [])[: math.ceil(target * oversample)], start=1):
@@ -95,6 +99,7 @@ def export(oversample=2.0, pool_dir=POOL_DIR, sheet_dir=SHEET_DIR, decision_dir=
                     "candidate_id": row["candidate_id"],
                     "gold_label_mapped": row["gold_label_mapped"],
                     "stratum": secondary_key(row),
+                    "auto_flags": ";".join(flags[row["candidate_id"]]),
                     "original_question": row["original_question"],
                     "source_evidence": row["source_evidence"],
                     "source_meta": json.dumps(row["source_meta"], ensure_ascii=False),

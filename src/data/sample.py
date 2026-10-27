@@ -3,6 +3,7 @@
 Usage (from repo root):
     python -m src.data.sample            # report shortfalls, write only if every target is met
     python -m src.data.sample --report   # report only
+    python -m src.data.sample --pilot    # 5-question pilot (annotation guide §7.2)
 
 For each domain and gold label, takes the first ``TARGETS`` rows with ``eligibility_status == include`` in
 ``priority_order``, then assigns group IDs (``onc-001`` …) in a seeded shuffle so IDs don't reveal labels.
@@ -10,6 +11,11 @@ For each domain and gold label, takes the first ``TARGETS`` rows with ``eligibil
 Writes:
 - data/processed/questions.jsonl (git-ignored: source text), validated at the ``final`` stage
 - data/questions_manifest.csv (committed: IDs and labels only), enough to rebuild the dataset exactly
+
+The pilot takes the first included row for each ``PILOT_SLOTS`` entry. These are the same rows the full sample
+takes first, so the pilot runs on production questions. Pilot group IDs use the 9xx range (``onc-901``) so
+they never collide with production IDs. Outputs: data/processed/pilot.jsonl (git-ignored) and
+data/pilot_manifest.csv.
 """
 
 import argparse
@@ -24,6 +30,17 @@ from src.data.screening import DECISION_DIR, POOL_DIR, apply_decisions, load_dec
 
 QUESTIONS = Path("data/processed/questions.jsonl")
 MANIFEST = Path("data/questions_manifest.csv")
+PILOT = Path("data/processed/pilot.jsonl")
+PILOT_MANIFEST = Path("data/pilot_manifest.csv")
+
+# Correction positives in both correction domains, an (adversarial NFP) control, and two contrasting triage classes.
+PILOT_SLOTS = [
+    ("oncology", "correction_required"),
+    ("oncology", "no_correction"),
+    ("public_health", "correction_required"),
+    ("acute_triage", "1B"),
+    ("acute_triage", "0A"),
+]
 
 
 def select(rows, targets, seed=SEED):
@@ -54,6 +71,23 @@ def build(pool_dir=POOL_DIR, decision_dir=DECISION_DIR, seed=SEED):
     return questions, report, short
 
 
+def build_pilot(pool_dir=POOL_DIR, decision_dir=DECISION_DIR, seed=SEED):
+    """Return ``(pilot_rows, missing_slots)``."""
+    pilot, missing, counters = [], [], {}
+    ordered = {}
+    for domain, gold in PILOT_SLOTS:
+        if domain not in ordered:
+            rows = apply_decisions(load_pool(domain, pool_dir), load_decisions(domain, decision_dir))
+            ordered[domain] = priority_order(rows, seed)
+        row = next((r for r in ordered[domain].get(gold, []) if r["eligibility_status"] == "include"), None)
+        if row is None:
+            missing.append((domain, gold))
+            continue
+        counters[domain] = counters.get(domain, 900) + 1
+        pilot.append({**row, "group_id": f"{DOMAINS[domain]}-{counters[domain]}"})
+    return pilot, missing
+
+
 def write_manifest(questions, path=MANIFEST):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -67,7 +101,22 @@ def write_manifest(questions, path=MANIFEST):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--report", action="store_true", help="print availability only; write nothing")
+    parser.add_argument("--pilot", action="store_true", help="write the 5-question pilot set instead")
     args = parser.parse_args(argv)
+
+    if args.pilot:
+        pilot, missing = build_pilot()
+        if missing:
+            print("Not written: no included candidate yet for " + ", ".join(f"{d}/{g}" for d, g in missing))
+            return 1
+        problems = validate_rows(pilot, "final")
+        if problems:
+            print(f"FAIL: {problems[0]}")
+            return 1
+        write_jsonl(pilot, PILOT)
+        write_manifest(pilot, PILOT_MANIFEST)
+        print(f"wrote {PILOT} ({len(pilot)} questions) and {PILOT_MANIFEST}")
+        return 0
 
     questions, report, short = build()
     for domain, gold_report in report.items():

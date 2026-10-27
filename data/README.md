@@ -23,7 +23,17 @@ python -m src.data.screening export                 # → data/processed/screeni
 python -m src.data.screening import path/to/*.csv   # validate + merge → data/decisions/{domain}.csv (committed)
 python -m src.data.sample --report                  # included vs. target per label
 python -m src.data.sample                           # → data/processed/questions.jsonl + data/questions_manifest.csv
+python -m src.data.sample --pilot                   # 5-question pilot → data/processed/pilot.jsonl + data/pilot_manifest.csv
 ```
+
+- **`auto_flags`** on review sheets (`src/data/prescreen.py`) are hints and never change a decision:
+  - `news_or_policy_claim`, `label_may_rate_story_not_claim` (UPHILL)
+  - `mentions_image`, `possible_identifier`, `very_short`
+  - `duplicate_text`, `duplicate_conflicting_labels`. Cancer-Myth contains one question as both a positive
+    (`cm-419`) and an NFP control (`cmnfp-1007`). Exclude both.
+- **Pilot:** the first included row for each of oncology positive, oncology control, public-health positive,
+  triage `1B` and triage `0A`. These are the same rows the full sample takes first. Pilot IDs use the
+  `9xx` range (`onc-901`).
 
 - **Priority order** (`src/data/sampling.py`): within each gold label, candidates are shuffled with a fixed
   seed and interleaved across sub-strata (Cancer-Myth myth category, UPHILL `source_db`, CARE-Bench source
@@ -58,14 +68,18 @@ three extensions for the candidate stage:
 
 | Pool | Rows | Gold labels | Notes |
 |---|---:|---|---|
-| `oncology` | 735 | 585 `correction_required` · 150 `no_correction` | All NFP controls start on `hold` (see below). `target_false_premise` is empty: Cancer-Myth gives the correction, not the premise, so the clinical lead writes it from `source_evidence` |
+| `oncology` | 735 | 585 `correction_required` · 150 `no_correction` | NFP controls: see below. `target_false_premise` is empty: Cancer-Myth gives the correction, not the premise, so the clinical lead writes it from `source_evidence` |
 | `public_health` | 1,613 | 848 `correction_required` · 765 `no_correction` | Level 2 only; mixture/fabricated dropped (325); exact-duplicate claims dropped (7); `target_false_premise` = cleaned claim |
 | `acute_triage` | 439 | 245 `0A` · 55 `0B` · 117 `1A` · 22 `1B` | Round 1 only. `source_evidence` = the case's `source_grounding` |
 
-**Cancer-Myth NFP warning.** All 150 rows in `cancer-myth-nfp` have a `non_presupposition` field that
-*describes a presupposition* ("The presupposition is that…"). They may not be clean no-false-presupposition
-controls. The loader puts them all on `hold` until the data lead and clinical lead check the Cancer-Myth
-paper's definition of NFP.
+**Cancer-Myth NFP controls (verified).** The NFP set contains generated questions that an LLM verifier
+flagged as having a false presupposition, but that hematology-oncology physicians confirmed have **none**
+(Cancer-Myth paper, review criterion 1). The `non_presupposition` field is the presupposition the LLM *claimed*,
+which the physicians rejected. That explains why every row reads "The presupposition is that…". These
+are valid controls, and good adversarial ones for overcorrection: the paper reports that precautionary
+prompting misidentified presuppositions in 41% of them. Their `source_evidence` starts with "Physicians
+confirmed no false presupposition. LLM-claimed presupposition they rejected: …". **Reviewers: don't treat that
+claimed presupposition as true.**
 
 ## Sources at a glance
 
