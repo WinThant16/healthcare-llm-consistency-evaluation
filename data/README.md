@@ -9,8 +9,34 @@ This directory contains datasets used for the healthcare LLM consistency evaluat
 - `fetch_raw.sh` - Downloads raw datasets that are not committed and verifies checksums
 
 ```bash
-bash data/fetch_raw.sh      # run from repo root after creating .venv
+bash data/fetch_raw.sh                      # run from repo root after creating .venv
+python -m src.data.build_pools              # raw → data/processed/candidates/{domain}.jsonl
+python -m src.data.validate data/processed/candidates/*.jsonl
+python -m pytest tests                      # schema + loader tests
 ```
+
+## Candidate pools: `processed/candidates/`
+
+These are git-ignored because they contain source-derived text and the repo is public. Rebuild them with
+`build_pools`. Each row follows the question schema in `codebase.md` §5.1 (see `src/data/schema.py`), with
+three extensions for the candidate stage:
+
+- `candidate_id`: a stable pool ID (`onc-cm-412`, `ph-uphill-10009_p`, `tri-meb_v1_case_0001_r01`).
+  `group_id` stays `null` until sampling assigns `onc-001`, and so on.
+- `eligibility_status` may be `pending`. The final stage only allows `include` / `exclude` / `hold`.
+- `source_meta`: source-specific fields kept for screening and stratified sampling (cancer type, UPHILL
+  claim/source_db/subjects, CARE-Bench split/specialty/age group/anchor facts).
+
+| Pool | Rows | Gold labels | Notes |
+|---|---:|---|---|
+| `oncology` | 735 | 585 `correction_required` · 150 `no_correction` | All NFP controls start on `hold` (see below). `target_false_premise` is empty: Cancer-Myth gives the correction, not the premise, so the clinical lead writes it from `source_evidence` |
+| `public_health` | 1,613 | 848 `correction_required` · 765 `no_correction` | Level 2 only; mixture/fabricated dropped (325); exact-duplicate claims dropped (7); `target_false_premise` = cleaned claim |
+| `acute_triage` | 439 | 245 `0A` · 55 `0B` · 117 `1A` · 22 `1B` | Round 1 only. `source_evidence` = the case's `source_grounding` |
+
+**Cancer-Myth NFP warning.** All 150 rows in `cancer-myth-nfp` have a `non_presupposition` field that
+*describes a presupposition* ("The presupposition is that…"). They may not be clean no-false-presupposition
+controls. The loader puts them all on `hold` until the data lead and clinical lead check the Cancer-Myth
+paper's definition of NFP.
 
 ## Sources at a glance
 

@@ -16,3 +16,5 @@ venv/
 .DS_Store
 # Raw datasets fetched by data/fetch_raw.sh (not redistributable / too large)
 data/raw/uphill/
+# Candidate pools contain source-derived text (Cancer-Myth, UPHILL); regenerate with python -m src.data.build_pools
+data/processed/candidates/
