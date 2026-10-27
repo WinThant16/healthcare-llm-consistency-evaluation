@@ -168,18 +168,24 @@ One row per original question. Fields are from annotation guide §3.
 
 | Field | Values |
 |---|---|
-| `group_id` | `{onc\|ph\|tri}-{nnn}`, e.g. `onc-007`. Stable, never reused |
+| `candidate_id` | Stable pool ID: `{onc\|ph\|tri}-{source_id}`, e.g. `onc-cm-412` |
+| `group_id` | `{onc\|ph\|tri}-{nnn}`, e.g. `onc-007`. Assigned at sampling (`null` in candidate pools). Stable, never reused |
 | `domain` | `oncology`, `public_health`, `acute_triage` |
 | `task` | `correction`, `escalation` |
 | `is_control` | bool (NFP / no-target-premise control) |
-| `source_dataset`, `source_id` | e.g. `cancer_myth`, `412` |
+| `source_dataset`, `source_id` | `cancer_myth`, `cancer_myth_nfp`, `uphill`, `care_bench`; e.g. `cm-412` |
 | `original_question` | verbatim |
 | `source_label_raw` | the label as supplied by the dataset |
 | `gold_label_mapped` | study label: `correction_required` / `no_correction` / `0A`–`1B` |
 | `target_false_premise` | string for positive correction items, otherwise null |
 | `source_evidence` | link / passage ID / source field |
-| `eligibility_status`, `eligibility_reason` | `include` / `exclude` / `hold` + reason |
+| `eligibility_status`, `eligibility_reason` | `include` / `exclude` / `hold` + reason (`pending` allowed in candidate pools only) |
 | `review_status` | `pending`, `independently_reviewed`, `adjudicated` |
+| `source_meta` | Object of source-specific fields for screening and stratified sampling, or `null` |
+
+The schema and validator live in `src/data/schema.py`. Candidate pools in `data/processed/candidates/`
+use the `candidates` stage, and `data/processed/questions.jsonl` uses the `final` stage:
+`python -m src.data.validate [--stage final] <files>`.
 
 ### 5.2 Variant: `data/processed/variants.jsonl`
 
