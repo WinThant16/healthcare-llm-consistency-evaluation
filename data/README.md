@@ -12,8 +12,37 @@ This directory contains datasets used for the healthcare LLM consistency evaluat
 bash data/fetch_raw.sh                      # run from repo root after creating .venv
 python -m src.data.build_pools              # raw → data/processed/candidates/{domain}.jsonl
 python -m src.data.validate data/processed/candidates/*.jsonl
-python -m pytest tests                      # schema + loader tests
+python -m pytest tests                      # schema, loader, screening and sampling tests
 ```
+
+## From candidates to the 240 groups
+
+```bash
+python -m src.data.screening export                 # → data/processed/screening/{domain}.csv (git-ignored)
+# reviewers fill: eligibility_status, eligibility_reason, target_false_premise, reviewed_by, review_status
+python -m src.data.screening import path/to/*.csv   # validate + merge → data/decisions/{domain}.csv (committed)
+python -m src.data.sample --report                  # included vs. target per label
+python -m src.data.sample                           # → data/processed/questions.jsonl + data/questions_manifest.csv
+```
+
+- **Priority order** (`src/data/sampling.py`): within each gold label, candidates are shuffled with a fixed
+  seed and interleaved across sub-strata (Cancer-Myth myth category, UPHILL `source_db`, CARE-Bench source
+  dataset). The review sheet holds the top `target × 2` per label (`--oversample` changes this). The sampler
+  takes the first `target` rows marked `include` in the same order, so screening the top of the sheet is
+  enough.
+- **Decisions** in `data/decisions/` hold only IDs and decisions, so they're safe to commit. You can import in
+  batches; later imports overwrite earlier decisions for the same `candidate_id`. Blank
+  `eligibility_status` rows are skipped. Any invalid row blocks the whole import, so nothing is half-written.
+  Import rules:
+  - `exclude`/`hold` need a reason
+  - including a positive correction item needs `target_false_premise` (Cancer-Myth always; UPHILL is prefilled from the claim)
+  - controls must not have a premise
+- **The sampler writes only when every target is met.** Otherwise it reports the shortfall and exits 1.
+  Group IDs (`onc-001`…) are assigned in a seeded shuffle, so they don't reveal labels.
+  `data/questions_manifest.csv` (IDs and labels only, committed), together with the raw-data checksums, is
+  enough to rebuild `questions.jsonl` exactly.
+- **CARE-Bench `1B`:** all 22 round-1 cases are on the sheet. Excluding more than 2 makes the target
+  unreachable without the multi-turn decision.
 
 ## Candidate pools: `processed/candidates/`
 
