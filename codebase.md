@@ -10,11 +10,14 @@ implement your part. Read this before writing code or adding data.
 
 Where documents conflict, follow this order:
 
-1. **Week 1 Study Design Freeze, Protocol v1.0 (Oct 5, 2026).** Scope, labels, review rules and the GIR
-   metric. *This document is not in the repo yet and should be added under `docs/`.*
-2. [`docs/annotation_guide_v1.md`](docs/annotation_guide_v1.md). Labeling rules, field definitions and the
-   QC workflow. This file is the most detailed reference in the repo.
-3. [`docs/proposal.pdf`](docs/proposal.pdf). The original proposal and six-week execution and ownership plan.
+1. [`docs/protocol_v1.1_amendment.md`](docs/protocol_v1.1_amendment.md). Replaces Pregnant Questions with
+   UPHILL and Gemini with Jev (decision-only). *Proposed; takes effect once the team approves it.*
+2. [`docs/protocol_v1.0.pdf`](docs/protocol_v1.0.pdf), the Week 1 Study Design Freeze (Oct 5, 2026). Scope,
+   models, labels, review rules and the GIR metric.
+3. [`docs/annotation_guide_v1.md`](docs/annotation_guide_v1.md). Labeling rules, field definitions and the
+   QC workflow. This file is the most detailed reference in the repo. Where it mentions Pregnant Questions or
+   `maternal_infant`, read UPHILL / `public_health`.
+4. [`docs/proposal.pdf`](docs/proposal.pdf). The original proposal and six-week execution and ownership plan.
    **Its domain list, paraphrase count (4) and question counts are superseded by the freeze.**
 
 This guide summarizes those documents and adds engineering conventions. If it disagrees with them, they
@@ -27,12 +30,22 @@ win. Fix this file in a PR.
 | Domain (`domain`) | Source dataset | Task (`task`) | Sample |
 |---|---|---|---:|
 | `oncology` | Cancer-Myth (+ NFP controls) | `correction` | 60 positive + 20 controls |
-| `maternal_infant` | Pregnant Questions | `correction` | 60 false/harmful-assumption + 20 controls |
+| `public_health` | UPHILL (v1.1; was Pregnant Questions) | `correction` | 60 false-claim + 20 true-claim controls |
 | `acute_triage` | CARE-Bench | `escalation` | 80 (20 per action class) |
 | **Total** | | | **240 question groups** |
 
 - **Question group:** 1 original + **3** meaning-preserving paraphrases = 4 variants (`original`, `p1`, `p2`, `p3`).
 - **Volume:** 960 prompts per model × 3 models = **2,880 responses**.
+- **Models:**
+
+  | `model_key` | Model | Mode |
+  |---|---|---|
+  | `gpt` | GPT-6 Astra (`gpt-6-astra`) | Free-text chat: medium effort, 512 output tokens, 1 sample, no tools |
+  | `claude` | Claude Opus 5 (`claude-opus-5`) | Free-text chat, same settings |
+  | `jev` | Jev, TypeSafe AI (v1.1; was Gemini 3.8 Flash) | **Decision-only:** typed Choice question, returns choice + probabilities |
+
+  Jev's decisions go straight into GIR and accuracy. It isn't scored for correction wording, accommodation
+  or conflict, and it skips the mapper. See amendment §2.
 - **Escalation classes** (CARE-Bench, never redefined): `0A` clarification, `0B` self-care/monitor,
   `1A` nonurgent professional care, `1B` urgent/emergency.
 - **Primary metric: Group Inconsistency Rate (GIR).** A group is inconsistent if its scorable variants
@@ -77,13 +90,14 @@ What exists today (✓) and what is planned. Create a planned directory when you
 ├── docs/
 │   ├── annotation_guide_v1.md    ✓ labeling and QC rules (Win)
 │   ├── proposal.pdf              ✓ proposal + execution plan
-│   └── protocol_v1.md              Week 1 freeze (to add)
+│   ├── protocol_v1.0.pdf         ✓ Week 1 study design freeze
+│   └── protocol_v1.1_amendment.md ✓ UPHILL + Jev changes (proposed)
 ├── data/
 │   ├── README.md                 ✓
 │   ├── raw/                      ✓ source datasets, never edited
 │   │   ├── cancer-myth/          ✓ validation-00000-of-00001.parquet  (585 rows)
 │   │   ├── cancer-myth-nfp/      ✓ nfp-00000-of-00001.parquet         (150 rows)
-│   │   ├── pregnant-questions/     to add
+│   │   ├── uphill/                 to add
 │   │   └── care-bench/             to add
 │   └── processed/                  pipeline outputs (questions, variants, splits)
 ├── prompts/                        versioned patient-facing and judge prompts
@@ -135,8 +149,9 @@ Run scripts from the repo root. Paths in the code are relative to it.
 | `non_presupposition` | free-text explanation (**check its meaning before using it as a control label**; some rows read like a presupposition description) |
 | `from_model`, `cancer`, `source_type`, `source_row` | provenance |
 
-Pregnant Questions and CARE-Bench are not in the repo yet. Their raw-field-to-gold mapping is an open team
-decision (annotation guide §11.1). **Licensing:** confirm the redistribution terms before committing source
+UPHILL and CARE-Bench are not in the repo yet. The UPHILL mapping (false claim → positive, true claim →
+control, Level 2 queries, no mixture or fabricated claims) is in amendment §1. The CARE-Bench mapping is
+still an open team decision (annotation guide §11.1). **Licensing:** confirm the redistribution terms before committing source
 data or derived paraphrases to this repo (guide §10).
 
 ---
@@ -153,8 +168,8 @@ One row per original question. Fields are from annotation guide §3.
 
 | Field | Values |
 |---|---|
-| `group_id` | `{onc\|mat\|tri}-{nnn}`, e.g. `onc-007`. Stable, never reused |
-| `domain` | `oncology`, `maternal_infant`, `acute_triage` |
+| `group_id` | `{onc\|ph\|tri}-{nnn}`, e.g. `onc-007`. Stable, never reused |
+| `domain` | `oncology`, `public_health`, `acute_triage` |
 | `task` | `correction`, `escalation` |
 | `is_control` | bool (NFP / no-target-premise control) |
 | `source_dataset`, `source_id` | e.g. `cancer_myth`, `412` |
@@ -183,7 +198,8 @@ One row per variant, including the original. Labels are inherited from the group
 
 Responses are **write-once**. To fix a problem, start a new `run_id` (`run-YYYYMMDD-tag`).
 
-`response_id`, `run_id`, `group_id`, `variant_id`, `response_text`, `error`. Model identity and settings
+`response_id`, `run_id`, `group_id`, `variant_id`, `response_text`, `error`. Jev rows have
+`response_text: null` and add `decision` (the returned `choice`), `probabilities` and `confidence`. Model identity and settings
 (`model_key`, exact `model_version`, `prompt_version`, temperature/seed/max_tokens, tokens, latency, cost,
 timestamp) go in a **separate metadata table** keyed by `response_id`. That way reviewers and the mapper
 stay blind (guide §8).
@@ -217,11 +233,12 @@ separate log (guide §7.3). Original independent decisions are never overwritten
 
 ## 7. Open decisions (from annotation guide §11)
 
-1. Raw-field-to-gold mapping for Cancer-Myth, NFP, Pregnant Questions and CARE-Bench (Advait + Win)
+1. Raw-field-to-gold mapping for Cancer-Myth, NFP and CARE-Bench, plus confirming UPHILL Level 2 (Advait + Win)
 2. Edge cases for overcorrection/accommodation and for vague or conditional referrals
 3. How `unscorable` responses, incomplete groups and controls enter the GIR denominator
 4. Adjudicators, audit stratification, and how kappa and recall are computed
-5. Licensing and redistribution of source datasets in this repo
+5. Licensing and redistribution of source datasets in this repo (UPHILL has no stated licence)
+6. Jev early-access timing and whether to fall back to Gemini 3.8 Flash if it isn't ready by the end of Week 2
 
 ## 8. Weekly rhythm
 
