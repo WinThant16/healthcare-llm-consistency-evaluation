@@ -9,8 +9,77 @@ This directory contains datasets used for the healthcare LLM consistency evaluat
 - `fetch_raw.sh` - Downloads raw datasets that are not committed and verifies checksums
 
 ```bash
-bash data/fetch_raw.sh      # run from repo root after creating .venv
+bash data/fetch_raw.sh                      # run from repo root after creating .venv
+python -m src.data.build_pools              # raw → data/processed/candidates/{domain}.jsonl
+python -m src.data.validate data/processed/candidates/*.jsonl
+python -m pytest tests                      # schema, loader, screening and sampling tests
 ```
+
+## From candidates to the 240 groups
+
+```bash
+python -m src.data.screening export                 # → data/processed/screening/{domain}.csv (git-ignored)
+# reviewers fill: eligibility_status, eligibility_reason, target_false_premise, reviewed_by, review_status
+python -m src.data.screening import path/to/*.csv   # validate + merge → data/decisions/{domain}.csv (committed)
+python -m src.data.sample --report                  # included vs. target per label
+python -m src.data.sample                           # → data/processed/questions.jsonl + data/questions_manifest.csv
+python -m src.data.sample --pilot                   # 5-question pilot → data/processed/pilot.jsonl + data/pilot_manifest.csv
+```
+
+- **`auto_flags`** on review sheets (`src/data/prescreen.py`) are hints and never change a decision:
+  - `news_or_policy_claim`, `label_may_rate_story_not_claim` (UPHILL)
+  - `mentions_image`, `possible_identifier`, `very_short`
+  - `duplicate_text`, `duplicate_conflicting_labels`. Cancer-Myth contains one question as both a positive
+    (`cm-419`) and an NFP control (`cmnfp-1007`). Exclude both.
+- **Pilot:** the first included row for each of oncology positive, oncology control, public-health positive,
+  triage `1B` and triage `0A`. These are the same rows the full sample takes first. Pilot IDs use the
+  `9xx` range (`onc-901`).
+
+- **Priority order** (`src/data/sampling.py`): within each gold label, candidates are shuffled with a fixed
+  seed and interleaved across sub-strata (Cancer-Myth myth category, UPHILL `source_db`, CARE-Bench source
+  dataset). The review sheet holds the top `target × 2` per label (`--oversample` changes this). The sampler
+  takes the first `target` rows marked `include` in the same order, so screening the top of the sheet is
+  enough.
+- **Decisions** in `data/decisions/` hold only IDs and decisions, so they're safe to commit. You can import in
+  batches; later imports overwrite earlier decisions for the same `candidate_id`. Blank
+  `eligibility_status` rows are skipped. Any invalid row blocks the whole import, so nothing is half-written.
+  Import rules:
+  - `exclude`/`hold` need a reason
+  - including a positive correction item needs `target_false_premise` (Cancer-Myth always; UPHILL is prefilled from the claim)
+  - controls must not have a premise
+- **The sampler writes only when every target is met.** Otherwise it reports the shortfall and exits 1.
+  Group IDs (`onc-001`…) are assigned in a seeded shuffle, so they don't reveal labels.
+  `data/questions_manifest.csv` (IDs and labels only, committed), together with the raw-data checksums, is
+  enough to rebuild `questions.jsonl` exactly.
+- **CARE-Bench `1B`:** all 22 round-1 cases are on the sheet. Excluding more than 2 makes the target
+  unreachable without the multi-turn decision.
+
+## Candidate pools: `processed/candidates/`
+
+These are git-ignored because they contain source-derived text and the repo is public. Rebuild them with
+`build_pools`. Each row follows the question schema in `codebase.md` §5.1 (see `src/data/schema.py`), with
+three extensions for the candidate stage:
+
+- `candidate_id`: a stable pool ID (`onc-cm-412`, `ph-uphill-10009_p`, `tri-meb_v1_case_0001_r01`).
+  `group_id` stays `null` until sampling assigns `onc-001`, and so on.
+- `eligibility_status` may be `pending`. The final stage only allows `include` / `exclude` / `hold`.
+- `source_meta`: source-specific fields kept for screening and stratified sampling (cancer type, UPHILL
+  claim/source_db/subjects, CARE-Bench split/specialty/age group/anchor facts).
+
+| Pool | Rows | Gold labels | Notes |
+|---|---:|---|---|
+| `oncology` | 735 | 585 `correction_required` · 150 `no_correction` | NFP controls: see below. `target_false_premise` is empty: Cancer-Myth gives the correction, not the premise, so the clinical lead writes it from `source_evidence` |
+| `public_health` | 1,613 | 848 `correction_required` · 765 `no_correction` | Level 2 only; mixture/fabricated dropped (325); exact-duplicate claims dropped (7); `target_false_premise` = cleaned claim |
+| `acute_triage` | 439 | 245 `0A` · 55 `0B` · 117 `1A` · 22 `1B` | Round 1 only. `source_evidence` = the case's `source_grounding` |
+
+**Cancer-Myth NFP controls (verified).** The NFP set contains generated questions that an LLM verifier
+flagged as having a false presupposition, but that hematology-oncology physicians confirmed have **none**
+(Cancer-Myth paper, review criterion 1). The `non_presupposition` field is the presupposition the LLM *claimed*,
+which the physicians rejected. That explains why every row reads "The presupposition is that…". These
+are valid controls, and good adversarial ones for overcorrection: the paper reports that precautionary
+prompting misidentified presuppositions in 41% of them. Their `source_evidence` starts with "Physicians
+confirmed no false presupposition. LLM-claimed presupposition they rejected: …". **Reviewers: don't treat that
+claimed presupposition as true.**
 
 ## Sources at a glance
 
