@@ -14,8 +14,7 @@ Where documents conflict, follow this order:
    UPHILL and Gemini with Jev (decision-only). *Proposed; takes effect once the team approves it.*
 2. [`docs/protocol_v1.0.pdf`](docs/protocol_v1.0.pdf), the Week 1 Study Design Freeze (Oct 5, 2026). Scope,
    models, labels, review rules and the GIR metric.
-3. [`docs/annotation_guide_v1.1.md`](docs/annotation_guide_v1.1.md). Labeling rules, field definitions and the
-   QC workflow, including the raw-to-gold mapping and source-specific rules (§3). This file is the most detailed reference in the repo. 
+3. [`docs/annotation_guide_v1.1.md`](docs/annotation_guide_v1.1.md). Labeling rules, field definitions and the QC workflow, including the raw-to-gold mapping and source-specific rules (§3). This file is the most detailed reference in the repo. 
 4. [`docs/proposal.pdf`](docs/proposal.pdf). The original proposal and six-week execution and ownership plan.
    **Its domain list, paraphrase count (4) and question counts are superseded by the freeze.**
 
@@ -87,7 +86,7 @@ What exists today (✓) and what is planned. Create a planned directory when you
 ├── requirements.txt              ✓ pandas, pyarrow
 ├── .gitignore                    ✓ ignores .venv/, .env, __pycache__/
 ├── docs/
-│   ├── annotation_guide_v1.1md   ✓ labeling and QC rules (Win)
+│   ├── annotation_guide_v1.1.md   ✓ labeling and QC rules (Win)
 │   ├── proposal.pdf              ✓ proposal + execution plan
 │   ├── protocol_v1.0.pdf         ✓ Week 1 study design freeze
 │   └── protocol_v1.1_amendment.md ✓ UPHILL + Jev changes (proposed)
