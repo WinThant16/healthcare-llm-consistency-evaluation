@@ -129,7 +129,7 @@ Jev can't produce a patient-facing answer, so it answers the study's decision di
 ## Approval
 
 - [ ] Advait (data lead)
-- [ ] Win (clinical-labeling lead): UPHILL mapping and the Level 2 choice
+- [x] Win (clinical-labeling lead): UPHILL mapping and the Level 2 choice
 - [ ] Sahil (paraphrase lead)
 - [ ] Engineering lead: Jev API access
 - [ ] Bruce (evaluation lead): Jev analysis plan
