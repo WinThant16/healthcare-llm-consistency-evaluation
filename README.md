@@ -88,7 +88,7 @@ data/
   raw/         Source datasets, never edited (UPHILL git-ignored; see fetch_raw.sh)
   decisions/   Screening decisions: IDs and decisions only (committed)
   processed/   Candidate pools, review sheets, questions.jsonl (git-ignored: source text)
-src/data/      Loaders, schema + validator, pre-screen flags, screening, sampling
+src/data/      Loaders, schema + validator, pre-screen flags, screening (+ browser review app), sampling
 prompts/       Versioned model, Jev, mapper and paraphrase prompts
 outputs/       Model responses, annotations, metrics, figures
 tests/         Unit tests
