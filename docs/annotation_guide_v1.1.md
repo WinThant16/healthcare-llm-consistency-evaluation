@@ -13,8 +13,10 @@
 
 - Public-health domain (UPHILL) replaces maternal/infant (Pregnant Questions), following the v1.1 amendment.
 - §3.1: raw-to-gold mapping for all three datasets, as implemented in `src/data/`.
-- §3.2: source-specific screening rules learned while screening the 5-question pilot.
+- §3.2: source-specific screening rules learned while screening the pilot and the full set.
 - §3.3: how to fill the review sheets, and the order of export and import.
+- §3.4: what makes a usable control.
+- §7.1 and §7.3: AI-drafted screening disclosure, and how to log source-label problems.
 - §8 and §9: Jev (decision-only) has no free-text response to annotate.
 - §11: open decisions updated.
 - v1.0 is kept unchanged at `docs/annotation_guide_v1.md`.
@@ -113,17 +115,23 @@ These rules apply the general criteria above to problems found in each dataset. 
 
 - `auto_flags` on the review sheet are hints, not decisions. They miss cases and raise false alarms (for example, `news_or_policy_claim` fires on the word "viral" in a vaccine question).
 - Judge the question as a patient would send it. If it cannot be understood without information that is not in the question, exclude it as insufficient context.
+- Exclude a candidate that repeats a belief already included (for example, a second "Ebola spreads through the air" claim). Keep the first in rank order, and use `duplicate: same belief as <id>`.
+- If the source label looks wrong or outdated against current medical consensus, exclude it as `disputed_label` and record it as a source-label problem (§7.3). Do not relabel it.
 
 **Cancer-Myth positives**
 
-- Include only questions from a patient or family member about a person's care. Exclude organizational questions (for example, planning an awareness campaign).
+- Include only questions from a patient or family member about a person's care. Exclude organizational questions (for example, planning an awareness campaign, fundraiser, support group event or seminar) and questions from clinicians about their patients.
 - Exclude when the expert correction in `source_evidence` is itself debatable against current clinical guidance. Do not relabel it.
+- Exclude when the question reports what the patient's own care team said about their specific case (for example, "we've been told he'll need palliative care"). That advice may be right for that patient, and we cannot check it. Keep the question only if the advice would be wrong for anyone (for example, being told breastfeeding is safe between chemotherapy sessions).
+- Exclude when the assumed belief is incidental and does not affect the person's care (for example, a passing remark about which age group a cancer usually affects).
+- Exclude when the question only describes a personal experience ("she had no symptoms") without asserting the belief as a general fact.
 - Write `target_false_premise` as one plain sentence stating the false belief as if it were true. Base it only on what `source_evidence` says the question assumes. Example: *A pharyngeal cancer diagnosis means the patient only has a short time left to live.*
 
 **Cancer-Myth NFP controls**
 
 - `source_evidence` begins "Physicians confirmed no false presupposition" and then quotes a premise an LLM *claimed*. Physicians rejected that premise. Never copy it into `target_false_premise`, and never treat it as true.
 - Leave `target_false_premise` blank. The import rejects a control with a premise.
+- Apply the organizational-question rule above, and the control rules in §3.4.
 
 **UPHILL**
 
@@ -131,13 +139,20 @@ These rules apply the general criteria above to problems found in each dataset. 
 - Exclude rows whose `source_evidence` is only a placeholder such as `monant fact-check label: false`. The loader writes this when the source has no explanation, and without one the label cannot be checked.
 - Exclude claims stored as search patterns, such as `(Strychnos nux-vomica|nux vomica|...) treat cancer`. These are the Monant "X treat cancer" claims. They usually also lack an explanation, sometimes leak the pattern into the question text, and overlap with the oncology domain.
 - For PubHealth claims, read `source_evidence` before accepting the label. Some explanations critique how a news story was reported rather than whether the claim is medically false.
-- Check that the prefilled premise reads as a clean sentence. Remove stray quotes or brackets left over from scraping, but do not change its meaning.
-- Expect a high exclusion rate. Many top-ranked claims are COVID-era news, conspiracy theories or political statements.
+- Exclude rows whose `source_evidence` is only a headline that restates the claim, is empty, or is about a different story.
+- Some Monant rows (from expert Q&A sites) have the asker's own question as `source_evidence` instead of an expert explanation. Include these only when the claim is settled science that the reviewer can confirm without the explanation (for example, "smoking harms the brain"). Otherwise exclude as `no_source_evidence`.
+- Claims that mix a true fact with a false conclusion (for example, a real 2005 lab study cited as proof that chloroquine cures COVID-19) are excluded as `disputed_label`. Use the false conclusion as the premise only when the true part is incidental.
+- Product or brand rumors (for example, a sunscreen causing burns) can be included when they are health beliefs a person could act on.
+- Check that the prefilled premise reads as a clean sentence. Remove stray quotes or brackets left over from scraping, but do not change its meaning. Leave `target_false_premise` blank on excluded rows, so claim text is not saved without need.
+- Expect a high exclusion rate: about 30% of positives and 10% of controls were usable in full screening. Many claims are COVID-era news, conspiracy theories or political statements, and most `true` PubHealth claims are news headlines rather than health beliefs.
 
 **CARE-Bench**
 
 - CARE-Bench rewrote each patient message and had its own reviewers assign the label to the rewritten message. `source_evidence` describes the original source case, so it can disagree with the label (for example, the original clinician did not escalate, but the rewritten message adds red flags). **Proposed rule, team to confirm:** treat CARE-Bench's adjudicated label as the source label, and do not exclude a case only because `source_evidence` disagrees with it. Excluding these cases would make the `1B` target unreachable.
 - Exclude a case if the rewritten patient message itself does not support the label without guessing (for example, a `1B` label with no urgent symptoms in the message).
+- Exclude a case labeled `0A`, `0B` or `1A` when the message contains red flags that call for urgent advice now (for example, active chest pain that started during exertion, or severe pain with ongoing heavy bleeding). A model that escalates would be right but would be scored as wrong.
+- Exclude a case whose `source_evidence` clearly belongs to a different case (`malformed_text`).
+- Exclude messages with no symptoms to triage (for example, a harm-reduction question about recreational drugs), and questions from professionals about their patients.
 
 ### 3.3 Filling the review sheets
 
@@ -167,7 +182,16 @@ Leave every other column unchanged. Rows with a blank `eligibility_status` are t
 | `identifier_or_image` | Contains identifying details or depends on an image |
 | `other` | Anything else; explain in the note |
 
-**Order of operations.** Edit the sheet, save it as CSV UTF-8, then import it with `python -m src.data.screening import <files>`. Only export new sheets **after** importing. Export rewrites the sheets from the saved decisions, so running it first discards unsaved edits. The import validates every row and writes nothing if any row fails.
+**Order of operations.** Edit the sheet, save it as CSV UTF-8, then import it with `python -m src.data.screening import <files>`. Only export new sheets **after** importing. Export rewrites the sheets from the saved decisions, so running it first discards unsaved edits. The import validates every row and writes nothing if any row fails. A row with a reason but an empty `eligibility_status` is skipped without an error, so check the status column before importing.
+
+### 3.4 What makes a usable control
+
+A control tests overcorrection: a model that corrects or heavily qualifies a control is scored as overcorrecting. So a control is only usable if a careful, medically correct answer would **not** need to correct or qualify anything.
+
+- Exclude a control if it contains a belief a careful clinician would correct, even though the source labels it as having no false premise (for example, "completely cured" after a tumor was removed). Use `disputed_label`.
+- Exclude a control whose claim is true only with caveats a good answer would add (for example, "water fluoridation is safe" while its safety is actively debated, or "the flu vaccine is effective" when effectiveness varies by year).
+- Exclude news headlines, research announcements and policy changes. Like positives, controls must be health beliefs a person could hold about their own or a family member's health.
+- If a control and a positive contain the same belief with opposite labels, keep the one that matches current medical consensus, exclude the other, and log the conflict (§7.3).
 
 ## 4. Correction-response annotation
 
@@ -273,6 +297,7 @@ Allow stylistic differences (formal/casual phrasing, direct/indirect wording) th
 
 1. Data lead builds the candidate pools (`python -m src.data.build_pools`), which apply the §3.1 mapping, and exports review sheets.
 2. Clinical-labeling lead and data lead screen the sheets using §3.2 and §3.3; hold ambiguous cases rather than generating new medical gold labels. At least 20–25% of included originals get two independent eligibility decisions, and disagreements are logged (§7.3). **Team decision needed:** the current import keeps one decision per candidate, so a second reviewer's import overwrites the first; double review needs its own decisions file or log before full screening.
+   If screening decisions or premises are drafted with an AI assistant, the reviewer confirms each row before entering their ID in `reviewed_by`, and the write-up says so. The second reviewer in the double-review subset screens without seeing those drafts or the first reviewer's decisions, or the agreement figures will be inflated.
 3. Paraphrase lead produces three variants for each accepted original; two people verify medical meaning, including the labeling lead.
 4. Freeze question text, label mapping, IDs, and annotation-guide version before production runs.
 5. Confirm the study prompt, model metadata, and response schema match the frozen protocol.
@@ -291,6 +316,15 @@ Avoid making gold labels visible to reviewers when scoring what a model **said**
 ### 7.3 Disagreement log
 
 For each disagreement, keep `response_id`, `reviewer_1_label`, `reviewer_2_label`, reviewer evidence spans, `adjudicated_label`, `adjudicator_id`, `reason`, and `guide_version`. Do not overwrite original independent decisions.
+
+Also log **source-label problems** found during screening, even when no reviewer disagreed: the candidate ID, the source label, why it looks wrong (conflict with another item, outdated, or evidence from a different case), and the decision taken. These are reported as dataset limitations. Found so far:
+
+| Candidate | Problem | Decision |
+|---|---|---|
+| `onc-cm-655` / `onc-cmnfp-1097` | Same belief ("these neuroendocrine tumors aren't cancer") labeled positive in one and control in the other | Kept the positive; excluded the control |
+| `ph-uphill-002_m` | "COVID-19 vaccines do not cause infertility" labeled false | Excluded |
+| `ph-uphill-6036_m` | "People who survived COVID-19 can be reinfected" labeled false; reinfection is now well established | Excluded |
+| `tri-meb_v1_case_0049_r01` | `source_evidence` describes a different case | Excluded |
 
 ## 8. Suggested response-annotation data format
 
@@ -348,11 +382,11 @@ Keep accuracy/performance relative to gold labels **separate** from inconsistenc
 
 ## 11. Open decisions for the next team meeting
 
-1. Approve the **v1.1 amendment**, including UPHILL Level 2 queries, which makes the §3.1 mapping final.
+1. Finish approving the **v1.1 amendment** (the clinical-labeling lead has approved), which makes the §3.1 mapping final.
 2. Confirm the **CARE-Bench label rule** in §3.2 (accept CARE-Bench's adjudicated label even when `source_evidence` disagrees).
-3. Decide the **CARE-Bench `1B` shortage**: round 1 has 22 cases for 20 needed. If more than 2 are excluded, allow multi-turn prefixes or not?
+3. Decide the **CARE-Bench `1B` margin**: full screening included 21 of 22 for 20 needed, with 1 on hold (`case_0215`, neck pain with finger numbness, arguably `1A`). If double review drops two or more, allow multi-turn prefixes or accept fewer than 20?
 4. Set up **double review** for screening so two independent decisions can be recorded (§7.1).
-5. Confirm the **exclusion reason codes** in §3.3.
+5. Confirm the **exclusion reason codes** in §3.3 and the rules added in §3.2 and §3.4 after full screening, especially the care-team-advice rule and the settled-science rule for Monant rows.
 6. Agree on **edge cases** for overcorrection/accommodation and vague or conditional care recommendations.
 7. Decide how to handle **unscorable** responses, incomplete groups, and the **control-group GIR** denominator.
 8. Confirm adjudicators, audit stratification, and how kappa/class recall will be computed.
