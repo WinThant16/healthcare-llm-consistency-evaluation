@@ -210,9 +210,12 @@ document.title = "Review · " + CFG.reviewer;
 
 async function load(d) {
   domain = d; rows = await (await fetch("/api/rows/" + d)).json();
-  const first = rows.findIndex(r => !r.eligibility_status); idx = first < 0 ? 0 : first; render();
+  const first = rows.findIndex(r => !done(r)); idx = first < 0 ? 0 : first; render();
 }
-function reviewed() { return rows.filter(r => r.eligibility_status).length; }
+// A row is done once a reviewer saved it. A status without reviewed_by is an unconfirmed draft.
+function done(r) { return !!(r.eligibility_status && r.reviewed_by); }
+function isDraft(r) { return !!(r.eligibility_status && !r.reviewed_by); }
+function reviewed() { return rows.filter(done).length; }
 function needsPremise(r) { return !r.is_control && r.task !== "escalation"; }
 function renderTabs() {
   const t = $("#tabs"); t.replaceChildren();
@@ -237,6 +240,8 @@ function render() {
   src.append(el("details", {}, el("summary", {}, "Source metadata"), el("pre", {}, JSON.stringify(meta, null, 2))));
 
   const form = el("div", {class: "card"});
+  if (isDraft(r)) form.append(el("div", {class: "claim"},
+    "Draft, not yet confirmed. Check it against the rubric, change anything you disagree with, then save (↵) to confirm."));
   const status = el("div", {class: "status"});
   for (const [s, k] of [["include", "i"], ["exclude", "e"], ["hold", "h"]])
     status.append(el("button", {"data-s": s, class: r.eligibility_status === s ? "on" : "", onclick: () => setStatus(s)}, el("kbd", {}, k), s));
@@ -255,11 +260,11 @@ function render() {
   } else form.append(el("div", {class: "hint"}, r.task === "escalation" ? "Triage case: no premise." : "Control: no premise."));
   form.append(el("div", {class: "nav"},
     el("button", {onclick: () => guard(() => go(idx - 1))}, "← Prev"), el("button", {onclick: () => guard(() => go(idx + 1))}, "Next →"),
-    el("button", {onclick: () => guard(nextOpen)}, el("kbd", {}, "n"), "Next unreviewed"),
+    el("button", {onclick: () => guard(nextOpen)}, el("kbd", {}, "n"), "Next unconfirmed"),
     el("button", {class: "primary", onclick: saveNext}, "Save & next ", el("kbd", {}, "↵")),
     el("button", {onclick: clearRow}, "Clear")),
     el("div", {class: "msg", id: "msg"}),
-    el("div", {class: "keys"}, "Keys: i/e/h status · 1–9 reason · ↵ save & next · ←/→ move · n next unreviewed · p premise · r note · ⌘/Ctrl+↵ save from a text box · Esc leave box"));
+    el("div", {class: "keys"}, "Keys: i/e/h status · 1–9 reason · ↵ save & next · ←/→ move · n next unconfirmed · p premise · r note · ⌘/Ctrl+↵ save from a text box · Esc leave box"));
   m.append(src, form); premHint();
 }
 function premHint() {
@@ -276,7 +281,7 @@ function reasonValue() { const b = $(".reasons button.on"), n = $("#note").value
   if (!b) return n; return n ? `${b.dataset.c}: ${n}` : b.dataset.c; }
 function msg(t, cls) { const m = $("#msg"); if (m) { m.textContent = t; m.className = "msg " + (cls || ""); } }
 function go(i) { if (i >= 0 && i < rows.length) { idx = i; render(); } }
-function nextOpen() { for (let k = 1; k <= rows.length; k++) { const j = (idx + k) % rows.length; if (!rows[j].eligibility_status) return go(j); }
+function nextOpen() { for (let k = 1; k <= rows.length; k++) { const j = (idx + k) % rows.length; if (!done(rows[j])) return go(j); }
   render(); msg("Every row on this sheet is reviewed.", "ok"); }
 async function post(body) {
   const res = await fetch("/api/save", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
