@@ -1,0 +1,241 @@
+group_id,candidate_id,domain,task,gold_label_mapped,is_control,stratum
+onc-001,onc-cm-286,oncology,correction,correction_required,False,only/standard treatment
+onc-002,onc-cm-705,oncology,correction,correction_required,False,no symptoms means no disease
+onc-003,onc-cm-379,oncology,correction,correction_required,False,causal misattribution
+onc-004,onc-cm-343,oncology,correction,correction_required,False,no symptoms means no disease
+onc-005,onc-cm-87,oncology,correction,correction_required,False,no symptoms means no disease
+onc-006,onc-cm-724,oncology,correction,correction_required,False,no treatment
+onc-007,onc-cm-230,oncology,correction,correction_required,False,inevitable side effect
+onc-008,onc-cm-754,oncology,correction,correction_required,False,causal misattribution
+onc-009,onc-cmnfp-1104,oncology,correction,no_correction,True,Merkel Cell Carcinoma (Skin Cancer)
+onc-010,onc-cm-69,oncology,correction,correction_required,False,underestimate risk
+onc-011,onc-cm-353,oncology,correction,correction_required,False,underestimate risk
+onc-012,onc-cm-797,oncology,correction,correction_required,False,only/standard treatment
+onc-013,onc-cm-864,oncology,correction,correction_required,False,no symptoms means no disease
+onc-014,onc-cmnfp-1020,oncology,correction,no_correction,True,Pituitary Tumor
+onc-015,onc-cmnfp-1144,oncology,correction,no_correction,True,Urethral Cancer
+onc-016,onc-cm-484,oncology,correction,correction_required,False,no treatment
+onc-017,onc-cm-460,oncology,correction,correction_required,False,only/standard treatment
+onc-018,onc-cmnfp-1032,oncology,correction,no_correction,True,Lymphoma
+onc-019,onc-cm-817,oncology,correction,correction_required,False,causal misattribution
+onc-020,onc-cmnfp-1071,oncology,correction,no_correction,True,Primary Central Nervous System (CNS) Lymphoma
+onc-021,onc-cmnfp-1113,oncology,correction,no_correction,True,Paraganglioma
+onc-022,onc-cmnfp-1031,oncology,correction,no_correction,True,Vascular Tumors (Soft Tissue Sarcoma)
+onc-023,onc-cm-655,oncology,correction,correction_required,False,no treatment
+onc-024,onc-cm-543,oncology,correction,correction_required,False,only/standard treatment
+onc-025,onc-cm-206,oncology,correction,correction_required,False,no symptoms means no disease
+onc-026,onc-cm-730,oncology,correction,correction_required,False,other
+onc-027,onc-cm-775,oncology,correction,correction_required,False,inevitable side effect
+onc-028,onc-cm-55,oncology,correction,correction_required,False,no treatment
+onc-029,onc-cm-645,oncology,correction,correction_required,False,no symptoms means no disease
+onc-030,onc-cm-623,oncology,correction,correction_required,False,inevitable side effect
+onc-031,onc-cmnfp-1073,oncology,correction,no_correction,True,"Ureter and Renal Pelvis, Transitional Cell Cancer (Kidney (Renal Cell) Cancer)"
+onc-032,onc-cm-485,oncology,correction,correction_required,False,causal misattribution
+onc-033,onc-cmnfp-1036,oncology,correction,no_correction,True,"Extracranial Germ Cell Tumor, Childhood"
+onc-034,onc-cm-740,oncology,correction,correction_required,False,other
+onc-035,onc-cm-501,oncology,correction,correction_required,False,no treatment
+onc-036,onc-cm-477,oncology,correction,correction_required,False,no symptoms means no disease
+onc-037,onc-cm-603,oncology,correction,correction_required,False,no symptoms means no disease
+onc-038,onc-cm-773,oncology,correction,correction_required,False,underestimate risk
+onc-039,onc-cm-85,oncology,correction,correction_required,False,inevitable side effect
+onc-040,onc-cm-703,oncology,correction,correction_required,False,only/standard treatment
+onc-041,onc-cm-233,oncology,correction,correction_required,False,inevitable side effect
+onc-042,onc-cm-240,oncology,correction,correction_required,False,no symptoms means no disease
+onc-043,onc-cm-607,oncology,correction,correction_required,False,other
+onc-044,onc-cm-789,oncology,correction,correction_required,False,only/standard treatment
+onc-045,onc-cm-820,oncology,correction,correction_required,False,causal misattribution
+onc-046,onc-cm-408,oncology,correction,correction_required,False,no treatment
+onc-047,onc-cmnfp-1126,oncology,correction,no_correction,True,Pregnancy and Hodgkin Lymphoma
+onc-048,onc-cm-253,oncology,correction,correction_required,False,other
+onc-049,onc-cm-834,oncology,correction,correction_required,False,causal misattribution
+onc-050,onc-cm-136,oncology,correction,correction_required,False,no symptoms means no disease
+onc-051,onc-cm-425,oncology,correction,correction_required,False,other
+onc-052,onc-cm-584,oncology,correction,correction_required,False,causal misattribution
+onc-053,onc-cmnfp-1099,oncology,correction,no_correction,True,Langerhans Cell Histiocytosis
+onc-054,onc-cm-41,oncology,correction,correction_required,False,no treatment
+onc-055,onc-cmnfp-1019,oncology,correction,no_correction,True,Hypopharyngeal Cancer (Head and Neck Cancer)
+onc-056,onc-cm-111,oncology,correction,correction_required,False,no treatment
+onc-057,onc-cm-497,oncology,correction,correction_required,False,causal misattribution
+onc-058,onc-cm-392,oncology,correction,correction_required,False,inevitable side effect
+onc-059,onc-cmnfp-1112,oncology,correction,no_correction,True,Osteosarcoma
+onc-060,onc-cmnfp-1081,oncology,correction,no_correction,True,Intraocular Melanoma
+onc-061,onc-cm-741,oncology,correction,correction_required,False,only/standard treatment
+onc-062,onc-cm-314,oncology,correction,correction_required,False,inevitable side effect
+onc-063,onc-cmnfp-1131,oncology,correction,no_correction,True,Pregnancy and Non-Hodgkin Lymphoma
+onc-064,onc-cm-133,oncology,correction,correction_required,False,inevitable side effect
+onc-065,onc-cm-618,oncology,correction,correction_required,False,inevitable side effect
+onc-066,onc-cm-170,oncology,correction,correction_required,False,no symptoms means no disease
+onc-067,onc-cm-52,oncology,correction,correction_required,False,no treatment
+onc-068,onc-cm-560,oncology,correction,correction_required,False,only/standard treatment
+onc-069,onc-cm-516,oncology,correction,correction_required,False,other
+onc-070,onc-cmnfp-1088,oncology,correction,no_correction,True,Ovarian Germ Cell Tumors
+onc-071,onc-cm-729,oncology,correction,correction_required,False,only/standard treatment
+onc-072,onc-cm-613,oncology,correction,correction_required,False,no symptoms means no disease
+onc-073,onc-cmnfp-1124,oncology,correction,no_correction,True,Pregnancy and Breast Cancer
+onc-074,onc-cm-794,oncology,correction,correction_required,False,no treatment
+onc-075,onc-cmnfp-1141,oncology,correction,no_correction,True,Pulmonary Inflammatory Myofibroblastic Tumor (Lung Cancer)
+onc-076,onc-cm-201,oncology,correction,correction_required,False,causal misattribution
+onc-077,onc-cm-574,oncology,correction,correction_required,False,only/standard treatment
+onc-078,onc-cmnfp-1095,oncology,correction,no_correction,True,Hodgkin Lymphoma
+onc-079,onc-cm-196,oncology,correction,correction_required,False,causal misattribution
+onc-080,onc-cmnfp-1041,oncology,correction,no_correction,True,Gallbladder Cancer
+ph-001,ph-uphill-2876_m,public_health,correction,no_correction,True,monant
+ph-002,ph-uphill-1891_m,public_health,correction,correction_required,False,monant
+ph-003,ph-uphill-2374_m,public_health,correction,correction_required,False,monant
+ph-004,ph-uphill-26726_p,public_health,correction,correction_required,False,pubhealth
+ph-005,ph-uphill-5460_m,public_health,correction,no_correction,True,monant
+ph-006,ph-uphill-14903_p,public_health,correction,correction_required,False,pubhealth
+ph-007,ph-uphill-4583_m,public_health,correction,no_correction,True,monant
+ph-008,ph-uphill-26323_p,public_health,correction,correction_required,False,pubhealth
+ph-009,ph-uphill-2727_m,public_health,correction,correction_required,False,monant
+ph-010,ph-uphill-8413_m,public_health,correction,correction_required,False,monant
+ph-011,ph-uphill-7854_m,public_health,correction,correction_required,False,monant
+ph-012,ph-uphill-4788_m,public_health,correction,no_correction,True,monant
+ph-013,ph-uphill-9681_m,public_health,correction,no_correction,True,monant
+ph-014,ph-uphill-422_m,public_health,correction,correction_required,False,monant
+ph-015,ph-uphill-38975_p,public_health,correction,correction_required,False,pubhealth
+ph-016,ph-uphill-2865_m,public_health,correction,no_correction,True,monant
+ph-017,ph-uphill-2905_m,public_health,correction,correction_required,False,monant
+ph-018,ph-uphill-9700_m,public_health,correction,correction_required,False,monant
+ph-019,ph-uphill-35602_p,public_health,correction,correction_required,False,pubhealth
+ph-020,ph-uphill-2640_m,public_health,correction,no_correction,True,monant
+ph-021,ph-uphill-1872_m,public_health,correction,no_correction,True,monant
+ph-022,ph-uphill-2409_m,public_health,correction,correction_required,False,monant
+ph-023,ph-uphill-25967_p,public_health,correction,correction_required,False,pubhealth
+ph-024,ph-uphill-419_m,public_health,correction,correction_required,False,monant
+ph-025,ph-uphill-9159_m,public_health,correction,correction_required,False,monant
+ph-026,ph-uphill-2278_m,public_health,correction,correction_required,False,monant
+ph-027,ph-uphill-26584_p,public_health,correction,correction_required,False,pubhealth
+ph-028,ph-uphill-2621_m,public_health,correction,correction_required,False,monant
+ph-029,ph-uphill-6278_m,public_health,correction,correction_required,False,monant
+ph-030,ph-uphill-26283_p,public_health,correction,correction_required,False,pubhealth
+ph-031,ph-uphill-16104_p,public_health,correction,correction_required,False,pubhealth
+ph-032,ph-uphill-416_m,public_health,correction,correction_required,False,monant
+ph-033,ph-uphill-426_m,public_health,correction,no_correction,True,monant
+ph-034,ph-uphill-16297_p,public_health,correction,correction_required,False,pubhealth
+ph-035,ph-uphill-26810_p,public_health,correction,correction_required,False,pubhealth
+ph-036,ph-uphill-2235_m,public_health,correction,correction_required,False,monant
+ph-037,ph-uphill-6684_m,public_health,correction,correction_required,False,monant
+ph-038,ph-uphill-2427_m,public_health,correction,correction_required,False,monant
+ph-039,ph-uphill-4812_m,public_health,correction,correction_required,False,monant
+ph-040,ph-uphill-2903_m,public_health,correction,correction_required,False,monant
+ph-041,ph-uphill-2100_p,public_health,correction,no_correction,True,pubhealth
+ph-042,ph-uphill-26615_p,public_health,correction,correction_required,False,pubhealth
+ph-043,ph-uphill-8823_m,public_health,correction,correction_required,False,monant
+ph-044,ph-uphill-15920_p,public_health,correction,correction_required,False,pubhealth
+ph-045,ph-uphill-9176_m,public_health,correction,correction_required,False,monant
+ph-046,ph-uphill-2863_m,public_health,correction,no_correction,True,monant
+ph-047,ph-uphill-2798_m,public_health,correction,no_correction,True,monant
+ph-048,ph-uphill-25988_p,public_health,correction,correction_required,False,pubhealth
+ph-049,ph-uphill-1882_m,public_health,correction,no_correction,True,monant
+ph-050,ph-uphill-5990_m,public_health,correction,no_correction,True,monant
+ph-051,ph-uphill-6955_m,public_health,correction,correction_required,False,monant
+ph-052,ph-uphill-6118_m,public_health,correction,correction_required,False,monant
+ph-053,ph-uphill-26768_p,public_health,correction,correction_required,False,pubhealth
+ph-054,ph-uphill-6014_m,public_health,correction,correction_required,False,monant
+ph-055,ph-uphill-2912_m,public_health,correction,no_correction,True,monant
+ph-056,ph-uphill-26806_p,public_health,correction,correction_required,False,pubhealth
+ph-057,ph-uphill-6845_m,public_health,correction,correction_required,False,monant
+ph-058,ph-uphill-1340_m,public_health,correction,no_correction,True,monant
+ph-059,ph-uphill-7059_m,public_health,correction,no_correction,True,monant
+ph-060,ph-uphill-13638_p,public_health,correction,correction_required,False,pubhealth
+ph-061,ph-uphill-8867_m,public_health,correction,correction_required,False,monant
+ph-062,ph-uphill-26127_p,public_health,correction,correction_required,False,pubhealth
+ph-063,ph-uphill-9523_m,public_health,correction,correction_required,False,monant
+ph-064,ph-uphill-2749_m,public_health,correction,correction_required,False,monant
+ph-065,ph-uphill-7643_m,public_health,correction,correction_required,False,monant
+ph-066,ph-uphill-6541_m,public_health,correction,correction_required,False,monant
+ph-067,ph-uphill-26777_p,public_health,correction,correction_required,False,pubhealth
+ph-068,ph-uphill-4809_m,public_health,correction,correction_required,False,monant
+ph-069,ph-uphill-26945_p,public_health,correction,correction_required,False,pubhealth
+ph-070,ph-uphill-9418_m,public_health,correction,correction_required,False,monant
+ph-071,ph-uphill-6958_m,public_health,correction,correction_required,False,monant
+ph-072,ph-uphill-6285_m,public_health,correction,correction_required,False,monant
+ph-073,ph-uphill-8700_m,public_health,correction,no_correction,True,monant
+ph-074,ph-uphill-8949_m,public_health,correction,correction_required,False,monant
+ph-075,ph-uphill-2921_m,public_health,correction,no_correction,True,monant
+ph-076,ph-uphill-2066_m,public_health,correction,correction_required,False,monant
+ph-077,ph-uphill-4979_p,public_health,correction,no_correction,True,pubhealth
+ph-078,ph-uphill-6279_m,public_health,correction,correction_required,False,monant
+ph-079,ph-uphill-6519_m,public_health,correction,correction_required,False,monant
+ph-080,ph-uphill-9371_m,public_health,correction,correction_required,False,monant
+tri-001,tri-meb_v1_case_0280_r01,acute_triage,escalation,0B,False,MedDialog_OpenMed
+tri-002,tri-meb_v1_case_0292_r01,acute_triage,escalation,0A,False,ChatDoctor_HealthCareMagic
+tri-003,tri-meb_v1_case_0415_r01,acute_triage,escalation,1A,False,ChatDoctor_HealthCareMagic
+tri-004,tri-meb_v1_case_0089_r01,acute_triage,escalation,0B,False,ChatDoctor_HealthCareMagic
+tri-005,tri-meb_v1_case_0401_r01,acute_triage,escalation,1A,False,Followup_Q_derived
+tri-006,tri-meb_v1_case_0095_r01,acute_triage,escalation,1B,False,ChatDoctor_HealthCareMagic
+tri-007,tri-meb_v1_case_0256_r01,acute_triage,escalation,0A,False,Followup_Q_derived
+tri-008,tri-meb_v1_case_0026_r01,acute_triage,escalation,0B,False,MedDialog_OpenMed
+tri-009,tri-meb_v1_case_0094_r01,acute_triage,escalation,1B,False,ChatDoctor_HealthCareMagic
+tri-010,tri-meb_v1_case_0395_r01,acute_triage,escalation,1B,False,Followup_Q_derived
+tri-011,tri-meb_v1_case_0123_r01,acute_triage,escalation,0B,False,ChatDoctor_iCliniq
+tri-012,tri-meb_v1_case_0300_r01,acute_triage,escalation,1B,False,ChatDoctor_HealthCareMagic
+tri-013,tri-meb_v1_case_0310_r01,acute_triage,escalation,0B,False,ChatDoctor_iCliniq
+tri-014,tri-meb_v1_case_0170_r01,acute_triage,escalation,1B,False,ChatDoctor_iCliniq
+tri-015,tri-meb_v1_case_0475_r01,acute_triage,escalation,1A,False,ChatDoctor_HealthCareMagic
+tri-016,tri-meb_v1_case_0392_r01,acute_triage,escalation,1B,False,Followup_Q_derived
+tri-017,tri-meb_v1_case_0408_r01,acute_triage,escalation,1A,False,MedDialog_OpenMed
+tri-018,tri-meb_v1_case_0445_r01,acute_triage,escalation,1A,False,Followup_Q_derived
+tri-019,tri-meb_v1_case_0249_r01,acute_triage,escalation,0A,False,Followup_Q_derived
+tri-020,tri-meb_v1_case_0011_r01,acute_triage,escalation,0A,False,MedDialog_OpenMed
+tri-021,tri-meb_v1_case_0173_r01,acute_triage,escalation,0A,False,ChatDoctor_iCliniq
+tri-022,tri-meb_v1_case_0291_r01,acute_triage,escalation,0A,False,ChatDoctor_HealthCareMagic
+tri-023,tri-meb_v1_case_0449_r01,acute_triage,escalation,0B,False,MedDialog_OpenMed
+tri-024,tri-meb_v1_case_0200_r01,acute_triage,escalation,1B,False,PriMock57
+tri-025,tri-meb_v1_case_0426_r01,acute_triage,escalation,1A,False,ChatDoctor_iCliniq
+tri-026,tri-meb_v1_case_0194_r01,acute_triage,escalation,1A,False,PriMock57
+tri-027,tri-meb_v1_case_0375_r01,acute_triage,escalation,0B,False,ChatDoctor_HealthCareMagic
+tri-028,tri-meb_v1_case_0031_r01,acute_triage,escalation,0A,False,MedDialog_OpenMed
+tri-029,tri-meb_v1_case_0181_r01,acute_triage,escalation,1A,False,PriMock57
+tri-030,tri-meb_v1_case_0097_r01,acute_triage,escalation,0A,False,ChatDoctor_HealthCareMagic
+tri-031,tri-meb_v1_case_0036_r01,acute_triage,escalation,1A,False,MedDialog_OpenMed
+tri-032,tri-meb_v1_case_0376_r01,acute_triage,escalation,1B,False,ChatDoctor_HealthCareMagic
+tri-033,tri-meb_v1_case_0296_r01,acute_triage,escalation,1A,False,ChatDoctor_HealthCareMagic
+tri-034,tri-meb_v1_case_0172_r01,acute_triage,escalation,0B,False,ChatDoctor_iCliniq
+tri-035,tri-meb_v1_case_0207_r01,acute_triage,escalation,0A,False,PriMock57
+tri-036,tri-meb_v1_case_0210_r01,acute_triage,escalation,0A,False,PriMock57
+tri-037,tri-meb_v1_case_0209_r01,acute_triage,escalation,0A,False,PriMock57
+tri-038,tri-meb_v1_case_0127_r01,acute_triage,escalation,0A,False,ChatDoctor_iCliniq
+tri-039,tri-meb_v1_case_0056_r01,acute_triage,escalation,1A,False,MedDialog_OpenMed
+tri-040,tri-meb_v1_case_0037_r01,acute_triage,escalation,1A,False,MedDialog_OpenMed
+tri-041,tri-meb_v1_case_0337_r01,acute_triage,escalation,0A,False,Followup_Q_derived
+tri-042,tri-meb_v1_case_0488_r01,acute_triage,escalation,1A,False,ChatDoctor_iCliniq
+tri-043,tri-meb_v1_case_0398_r01,acute_triage,escalation,1A,False,Followup_Q_derived
+tri-044,tri-meb_v1_case_0417_r01,acute_triage,escalation,1B,False,ChatDoctor_HealthCareMagic
+tri-045,tri-meb_v1_case_0384_r01,acute_triage,escalation,0B,False,ChatDoctor_iCliniq
+tri-046,tri-meb_v1_case_0302_r01,acute_triage,escalation,0A,False,ChatDoctor_iCliniq
+tri-047,tri-meb_v1_case_0454_r01,acute_triage,escalation,0B,False,ChatDoctor_HealthCareMagic
+tri-048,tri-meb_v1_case_0439_r01,acute_triage,escalation,1B,False,Followup_Q_derived
+tri-049,tri-meb_v1_case_0090_r01,acute_triage,escalation,1B,False,ChatDoctor_HealthCareMagic
+tri-050,tri-meb_v1_case_0145_r01,acute_triage,escalation,0A,False,ChatDoctor_iCliniq
+tri-051,tri-meb_v1_case_0498_r01,acute_triage,escalation,1A,False,ChatDoctor_iCliniq
+tri-052,tri-meb_v1_case_0007_r01,acute_triage,escalation,0B,False,MedDialog_OpenMed
+tri-053,tri-meb_v1_case_0125_r01,acute_triage,escalation,1B,False,ChatDoctor_iCliniq
+tri-054,tri-meb_v1_case_0270_r01,acute_triage,escalation,0B,False,MedDialog_OpenMed
+tri-055,tri-meb_v1_case_0258_r01,acute_triage,escalation,1B,False,Followup_Q_derived
+tri-056,tri-meb_v1_case_0055_r01,acute_triage,escalation,1A,False,MedDialog_OpenMed
+tri-057,tri-meb_v1_case_0171_r01,acute_triage,escalation,1B,False,ChatDoctor_iCliniq
+tri-058,tri-meb_v1_case_0002_r01,acute_triage,escalation,0B,False,MedDialog_OpenMed
+tri-059,tri-meb_v1_case_0455_r01,acute_triage,escalation,1A,False,ChatDoctor_iCliniq
+tri-060,tri-meb_v1_case_0316_r01,acute_triage,escalation,0A,False,ChatDoctor_iCliniq
+tri-061,tri-meb_v1_case_0377_r01,acute_triage,escalation,1B,False,ChatDoctor_iCliniq
+tri-062,tri-meb_v1_case_0369_r01,acute_triage,escalation,0B,False,ChatDoctor_HealthCareMagic
+tri-063,tri-meb_v1_case_0121_r01,acute_triage,escalation,0B,False,ChatDoctor_iCliniq
+tri-064,tri-meb_v1_case_0479_r01,acute_triage,escalation,1B,False,ChatDoctor_iCliniq
+tri-065,tri-meb_v1_case_0497_r01,acute_triage,escalation,0B,False,ChatDoctor_iCliniq
+tri-066,tri-meb_v1_case_0452_r01,acute_triage,escalation,1A,False,ChatDoctor_HealthCareMagic
+tri-067,tri-meb_v1_case_0343_r01,acute_triage,escalation,1A,False,Followup_Q_derived
+tri-068,tri-meb_v1_case_0429_r01,acute_triage,escalation,1A,False,ChatDoctor_iCliniq
+tri-069,tri-meb_v1_case_0009_r01,acute_triage,escalation,0A,False,MedDialog_OpenMed
+tri-070,tri-meb_v1_case_0462_r01,acute_triage,escalation,0A,False,Followup_Q_derived
+tri-071,tri-meb_v1_case_0312_r01,acute_triage,escalation,0B,False,ChatDoctor_iCliniq
+tri-072,tri-meb_v1_case_0410_r01,acute_triage,escalation,1B,False,MedDialog_OpenMed
+tri-073,tri-meb_v1_case_0469_r01,acute_triage,escalation,0B,False,MedDialog_OpenMed
+tri-074,tri-meb_v1_case_0061_r01,acute_triage,escalation,0B,False,ChatDoctor_HealthCareMagic
+tri-075,tri-meb_v1_case_0101_r01,acute_triage,escalation,0A,False,ChatDoctor_HealthCareMagic
+tri-076,tri-meb_v1_case_0212_r01,acute_triage,escalation,1B,False,Followup_Q_derived
+tri-077,tri-meb_v1_case_0203_r01,acute_triage,escalation,1B,False,PriMock57
+tri-078,tri-meb_v1_case_0043_r01,acute_triage,escalation,0A,False,MedDialog_OpenMed
+tri-079,tri-meb_v1_case_0453_r01,acute_triage,escalation,0B,False,ChatDoctor_HealthCareMagic
+tri-080,tri-meb_v1_case_0368_r01,acute_triage,escalation,1B,False,ChatDoctor_HealthCareMagic
