@@ -74,7 +74,7 @@ python -m src.data.sample                  # → data/processed/questions.jsonl 
 | [`codebase.md`](codebase.md) | **Start here.** Pipeline, ownership, data formats, conventions |
 | [`docs/protocol_v1.0.pdf`](docs/protocol_v1.0.pdf) | Week 1 study design freeze |
 | [`docs/protocol_v1.1_amendment.md`](docs/protocol_v1.1_amendment.md) | UPHILL and Jev changes (proposed) |
-| [`docs/annotation_guide_v1.md`](docs/annotation_guide_v1.md) | Labeling rules, QC workflow, response annotation format |
+| [`docs/annotation_guide_v1.1.md`](docs/annotation_guide_v1.1.md) | Labeling rules, QC workflow, response annotation format |
 | [`docs/schedule.md`](docs/schedule.md) | Task board, milestones, open decisions |
 | [`docs/proposal.pdf`](docs/proposal.pdf) | Original proposal and execution plan (superseded where the freeze differs) |
 | [`data/README.md`](data/README.md) | Datasets, candidate pools, screening and sampling |
