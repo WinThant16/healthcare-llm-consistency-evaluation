@@ -1,0 +1,6 @@
+candidate_id,eligibility_status,eligibility_reason,target_false_premise,reviewed_by,review_status
+ph-uphill-15307_p,exclude,policy claim,"Planned Parenthood is the only health care that a significant number of women get. About 30 percent of women, that's their health care.",win,
+ph-uphill-2275_m,exclude,"regulatory claim, not personal health",The FDA has ruled that homeopathic drugs are now illegal.,win,
+ph-uphill-26247_p,exclude,"insufficient context: ""this virus"" undefined",Children don’t seem to be getting this virus,win,
+ph-uphill-5420_m,exclude,claim stored as  search-pattern; no fact-check explanation,(Strychnos nux-vomica|nux vomica|Ukrain|Strychnine|nux vomica|poison nut|semen strychnos|quaker buttons|Strychnos spireana) treat cancer,win,
+ph-uphill-9523_m,include,,Individuals vaccinated against COVID-19 can shed viral components that are capable of infecting and harming those around them.,win,

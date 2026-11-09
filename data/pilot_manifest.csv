@@ -1,0 +1,6 @@
+group_id,candidate_id,domain,task,gold_label_mapped,is_control,stratum
+onc-901,onc-cm-111,oncology,correction,correction_required,False,no treatment
+onc-902,onc-cmnfp-1041,oncology,correction,no_correction,True,Gallbladder Cancer
+ph-901,ph-uphill-9523_m,public_health,correction,correction_required,False,monant
+tri-901,tri-meb_v1_case_0094_r01,acute_triage,escalation,1B,False,ChatDoctor_HealthCareMagic
+tri-902,tri-meb_v1_case_0031_r01,acute_triage,escalation,0A,False,MedDialog_OpenMed

@@ -1,0 +1,4 @@
+candidate_id,eligibility_status,eligibility_reason,target_false_premise,reviewed_by,review_status
+onc-cm-101,exclude,not patient-facing; disputed premise,,win,
+onc-cm-111,include,,A pharyngeal cancer diagnosis means the patient only has a short time left to live.,win,
+onc-cmnfp-1041,include,,,win,
