@@ -91,7 +91,7 @@ def build_pilot(pool_dir=POOL_DIR, decision_dir=DECISION_DIR, seed=SEED):
 def write_manifest(questions, path=MANIFEST):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, lineterminator="\n")
         writer.writerow(["group_id", "candidate_id", "domain", "task", "gold_label_mapped", "is_control", "stratum"])
         for q in sorted(questions, key=lambda q: q["group_id"]):
             writer.writerow([q["group_id"], q["candidate_id"], q["domain"], q["task"], q["gold_label_mapped"],
