@@ -211,7 +211,8 @@ def test_second_review_round_trip(dirs):
         with open(p, encoding="utf-8-sig") as f:
             sheets[p.stem] = list(csv.DictReader(f))
     tri = sheets["acute_triage"]
-    assert len(tri) == 25  # 25% of 100 reviewed triage rows, per status stratum
+    assert len(tri) == 28  # ceil(25% of 25) for each (status, gold) stratum: 4 × 7
+    assert {r["gold_label_mapped"] for r in tri} == {"0A", "0B", "1A", "1B"}
     assert all(r["eligibility_status"] == "" and r["reviewed_by"] == "" for rows in sheets.values() for r in rows)
     onc_positive = next(r for r in sheets["oncology"] if r["gold_label_mapped"] == "correction_required")
     assert onc_positive["target_false_premise"] == ""  # first-round premise is hidden
@@ -228,10 +229,11 @@ def test_second_review_round_trip(dirs):
     assert screening.import_sheets([tmp / "second.csv"], pool_dir, decision_dir, second=True) == 0
     assert {d: screening.load_decisions(d, decision_dir) for d in TARGETS} == before  # first round untouched
 
-    stats, log = screening.compare(pool_dir, decision_dir)
+    stats, log, premise_log = screening.compare(pool_dir, decision_dir)
     expected_disagreements = sum((before["acute_triage"][r["candidate_id"]]["eligibility_status"])
                                  != r["eligibility_status"] for r in second)
-    assert stats["acute_triage"]["double_reviewed"] == 25
+    assert stats["acute_triage"]["double_reviewed"] == 28
+    assert premise_log == []
     assert len(log) == expected_disagreements > 0
     assert (decision_dir / screening.DISAGREEMENTS).exists()
 
@@ -240,3 +242,110 @@ def test_cohen_kappa():
     assert screening.cohen_kappa([("a", "a"), ("b", "b")]) == 1
     assert screening.cohen_kappa([("a", "b"), ("b", "a")]) == -1
     assert screening.cohen_kappa([]) is None
+
+
+# --- adjudication -----------------------------------------------------------------------------------
+
+@pytest.fixture
+def double_reviewed(dirs):
+    """First round includes everything; second reviewer (sahil) excludes 2 triage rows and rewords 2 onc premises."""
+    pools, pool_dir, decision_dir, tmp = dirs
+    write_sheet(tmp / "first.csv", include_all(pools))
+    screening.import_sheets([tmp / "first.csv"], pool_dir, decision_dir)
+    tri = [r["candidate_id"] for r in pools["acute_triage"][:3]]
+    onc = [r for r in pools["oncology"] if not r["is_control"]][:3]
+    second = [{"candidate_id": c, "eligibility_status": "exclude" if i < 2 else "include",
+               "eligibility_reason": "insufficient_context" if i < 2 else "", "target_false_premise": "",
+               "reviewed_by": "sahil", "review_status": ""} for i, c in enumerate(tri)]
+    second += [{"candidate_id": r["candidate_id"], "eligibility_status": "include", "eligibility_reason": "",
+                "target_false_premise": ["Premise!", "A different belief", "a different belief"][i],
+                "reviewed_by": "sahil", "review_status": ""} for i, r in enumerate(onc)]
+    write_sheet(tmp / "second.csv", second)
+    assert screening.import_sheets([tmp / "second.csv"], pool_dir, decision_dir, second=True) == 0
+    return pools, pool_dir, decision_dir, tmp, tri, onc
+
+
+def read_csv(path):
+    with open(path, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def fill(path, updates):
+    rows = read_csv(path)
+    for r in rows:
+        r.update(updates.get(r["candidate_id"], {}))
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def test_premise_wording_goes_to_its_own_log(double_reviewed):
+    pools, pool_dir, decision_dir, tmp, tri, onc = double_reviewed
+    stats, log, premise_log = screening.compare(pool_dir, decision_dir)
+    assert {r["candidate_id"] for r in log} == set(tri[:2])  # eligibility only
+    # "Premise!" == "premise" after normalizing case/punctuation; the other two differ in meaning
+    assert {r["candidate_id"] for r in premise_log} == {onc[1]["candidate_id"], onc[2]["candidate_id"]}
+
+
+def test_rerunning_compare_keeps_adjudications(double_reviewed):
+    pools, pool_dir, decision_dir, tmp, tri, onc = double_reviewed
+    screening.compare(pool_dir, decision_dir)
+    fill(decision_dir / screening.DISAGREEMENTS, {tri[0]: {"adjudicated_status": "exclude", "adjudicator": "bruce"}})
+    fill(decision_dir / screening.PREMISE_DIFFERENCES, {onc[1]["candidate_id"]: {"same_meaning": "yes"}})
+    screening.compare(pool_dir, decision_dir)
+    log = {r["candidate_id"]: r for r in read_csv(decision_dir / screening.DISAGREEMENTS)}
+    premises = {r["candidate_id"]: r for r in read_csv(decision_dir / screening.PREMISE_DIFFERENCES)}
+    assert log[tri[0]]["adjudicated_status"] == "exclude" and log[tri[0]]["adjudicator"] == "bruce"
+    assert premises[onc[1]["candidate_id"]]["same_meaning"] == "yes"
+
+
+def test_adjudication_keeps_originals_and_feeds_sampler(double_reviewed):
+    pools, pool_dir, decision_dir, tmp, tri, onc = double_reviewed
+    first_before = screening.load_decisions("acute_triage", decision_dir)
+    stats_before, _, _ = screening.compare(pool_dir, decision_dir)
+    fill(decision_dir / screening.DISAGREEMENTS, {
+        tri[0]: {"adjudicated_status": "exclude", "adjudicator": "bruce"},  # reason taken from reviewer 2
+        tri[1]: {"adjudicated_status": "include", "adjudicator": "bruce"},
+    })
+    fill(decision_dir / screening.PREMISE_DIFFERENCES, {
+        onc[1]["candidate_id"]: {"same_meaning": "no", "adjudicated_premise": "Agreed premise", "adjudicator": "bruce"},
+        onc[2]["candidate_id"]: {"same_meaning": "yes"},
+    })
+    assert screening.adjudicate(pool_dir, decision_dir) == (0, 0)
+
+    assert screening.load_decisions("acute_triage", decision_dir) == first_before  # originals untouched
+    adj = screening.load_decisions("acute_triage", decision_dir / screening.ADJUDICATED)
+    assert adj[tri[0]]["eligibility_status"] == "exclude"
+    assert adj[tri[0]]["eligibility_reason"] == "insufficient_context"
+    assert adj[tri[0]]["review_status"] == "adjudicated"
+
+    eff_tri = screening.load_effective_decisions("acute_triage", decision_dir)
+    assert eff_tri[tri[0]]["eligibility_status"] == "exclude"
+    assert eff_tri[tri[2]]["review_status"] == "independently_reviewed"  # second round agreed
+    eff_onc = screening.load_effective_decisions("oncology", decision_dir)
+    assert eff_onc[onc[1]["candidate_id"]]["target_false_premise"] == "Agreed premise"
+    questions, _, _ = sample.build(pool_dir, decision_dir)
+    assert tri[0] not in {q["candidate_id"] for q in questions}
+
+    stats_after, _, _ = screening.compare(pool_dir, decision_dir)
+    assert stats_after == stats_before  # kappa uses raw rounds, unaffected by adjudication
+
+
+def test_adjudicate_validates_and_reports_pending(double_reviewed):
+    pools, pool_dir, decision_dir, tmp, tri, onc = double_reviewed
+    screening.compare(pool_dir, decision_dir)
+    assert screening.adjudicate(pool_dir, decision_dir) == (0, 4)
+    fill(decision_dir / screening.DISAGREEMENTS, {tri[0]: {"adjudicated_status": "exclude"}})  # no adjudicator
+    fill(decision_dir / screening.PREMISE_DIFFERENCES, {onc[1]["candidate_id"]: {"same_meaning": "no"}})  # no premise
+    errors, _ = screening.adjudicate(pool_dir, decision_dir)
+    assert errors == 2
+    assert not (decision_dir / screening.ADJUDICATED).exists()
+
+
+def test_import_rejects_adjudicated_status(dirs):
+    pools, pool_dir, decision_dir, tmp = dirs
+    d = decision(pools["acute_triage"][0])
+    d["review_status"] = "adjudicated"
+    write_sheet(tmp / "s.csv", [d])
+    assert screening.import_sheets([tmp / "s.csv"], pool_dir, decision_dir) == 1

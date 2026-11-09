@@ -59,17 +59,32 @@ python -m src.data.sample --pilot                   # 5-question pilot → data/
   ```bash
   python -m src.data.screening export --second [--fraction 0.25]  # blind sheets → data/processed/screening/second/
   python -m src.data.screening import --second path/to/second/*.csv  # → data/decisions/second/{domain}.csv
-  python -m src.data.screening compare                            # agreement, kappa, disagreements.csv
+  python -m src.data.screening compare                            # agreement, kappa, two adjudication logs
+  # adjudicator fills the logs, then:
+  python -m src.data.screening adjudicate                         # → data/decisions/adjudicated/{domain}.csv
   ```
 
   - **Sheets are blind.** They contain a seeded random `fraction` of already-reviewed candidates, picked
-    within each first-round status. First-round decisions and Cancer-Myth premises are hidden.
-  - **Separate storage.** Second-round decisions never overwrite first-round ones. `reviewed_by` is required
-    and must differ from the first reviewer.
-  - **Disagreements.** `compare` prints agreement and Cohen's kappa per domain. It writes
-    `data/decisions/disagreements.csv`, listing status disagreements and different premises on rows both
-    reviewers included, with blank adjudication columns. The adjudicator records the outcome there and
-    imports the final decision as a normal import with `review_status=adjudicated`.
+    within each (first-round status, gold label) group so small classes like triage `1B` are represented.
+    First-round decisions and Cancer-Myth premises are hidden.
+  - **Nothing is overwritten.** First-round, second-round and adjudicated decisions each have their own files
+    (annotation guide §7.3). `reviewed_by` is required in the second round and must differ from the first
+    reviewer. A normal import refuses `review_status=adjudicated`.
+  - **`compare`** prints agreement and Cohen's kappa per domain, always from the raw rounds, so adjudication
+    never changes them. It writes two logs:
+    - `disagreements.csv`: different eligibility. Fill `adjudicated_status` and `adjudicator`, plus
+      `adjudicated_reason` and `adjudicated_premise` if needed (they default to the chosen reviewer's).
+    - `premise_differences.csv`: both reviewers included the question, but the premises are worded
+      differently (case and punctuation are ignored). Fill `same_meaning` (`yes`/`no`). For `no`, also fill
+      `adjudicated_premise` and `adjudicator`. Unedited UPHILL claims show as `[unedited source claim]`.
+
+    Re-running `compare` **keeps everything already filled in**. Filled rows that no longer differ are
+    kept and reported.
+  - **`adjudicate`** validates the filled rows (writing nothing if any is invalid), writes the adjudicated
+    decisions and reports how many rows are still pending.
+  - **Effective decisions.** The sampler, the pilot and export use adjudicated decisions first, then
+    first-round ones. First-round rows the second reviewer agreed with show as `independently_reviewed`.
+
 - **The sampler writes only when every target is met.** Otherwise it reports the shortfall and exits 1.
   Group IDs (`onc-001`…) are assigned in a seeded shuffle, so they don't reveal labels.
   `data/questions_manifest.csv` (IDs and labels only, committed), together with the raw-data checksums, is
