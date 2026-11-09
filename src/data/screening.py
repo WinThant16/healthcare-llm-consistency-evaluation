@@ -106,7 +106,7 @@ def write_decisions(decisions, domain, pool, decision_dir=DECISION_DIR):
     path.parent.mkdir(parents=True, exist_ok=True)
     order = {cid: i for i, cid in enumerate(pool)}
     with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=DECISION_FIELDS)
+        writer = csv.DictWriter(f, fieldnames=DECISION_FIELDS, lineterminator="\n")
         writer.writeheader()
         writer.writerows(sorted(decisions.values(), key=lambda d: order[d["candidate_id"]]))
     return path
@@ -343,7 +343,7 @@ def _merge_log(path, rows, keep_fields):
 
 def _write_log(path, rows, fields):
     with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+        writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore", lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
