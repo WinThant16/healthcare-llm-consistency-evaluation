@@ -21,6 +21,7 @@ python -m pytest tests                      # schema, loader, screening and samp
 python -m src.data.screening export                 # → data/processed/screening/{domain}.csv (git-ignored)
 # reviewers fill: eligibility_status, eligibility_reason, target_false_premise, reviewed_by, review_status
 python -m src.data.screening import path/to/*.csv   # validate + merge → data/decisions/{domain}.csv (committed)
+python -m src.data.screening export --force         # re-export AFTER importing (refuses to overwrite otherwise)
 python -m src.data.sample --report                  # included vs. target per label
 python -m src.data.sample                           # → data/processed/questions.jsonl + data/questions_manifest.csv
 python -m src.data.sample --pilot                   # 5-question pilot → data/processed/pilot.jsonl + data/pilot_manifest.csv
@@ -40,13 +41,35 @@ python -m src.data.sample --pilot                   # 5-question pilot → data/
   dataset). The review sheet holds the top `target × 2` per label (`--oversample` changes this). The sampler
   takes the first `target` rows marked `include` in the same order, so screening the top of the sheet is
   enough.
-- **Decisions** in `data/decisions/` hold only IDs and decisions, so they're safe to commit. You can import in
-  batches; later imports overwrite earlier decisions for the same `candidate_id`. Blank
-  `eligibility_status` rows are skipped. Any invalid row blocks the whole import, so nothing is half-written.
-  Import rules:
+- **Decisions** in `data/decisions/` are committed. You can import in batches; later imports overwrite earlier
+  decisions for the same `candidate_id`. Blank `eligibility_status` rows are skipped. Any invalid row blocks
+  the whole import, so nothing is half-written. Import rules:
   - `exclude`/`hold` need a reason
   - including a positive correction item needs `target_false_premise` (Cancer-Myth always; UPHILL is prefilled from the claim)
-  - controls must not have a premise
+  - controls and triage (escalation) items must not have a premise
+- **No source text in decision files.** A premise is stored only if the reviewer **wrote or edited** it, and
+  never for excluded rows. An unedited UPHILL premise is the source claim; it isn't stored, but it's still
+  applied from the pool when the dataset is built. To bring older decision files in line with this rule (it
+  also clears premises on triage rows):
+  `python -m src.data.screening normalize`.
+- **Export won't overwrite existing sheets**, because they may hold unsaved edits. Import first, then
+  re-export with `--force`.
+- **Independent second review** (protocol: at least 20–25% double-annotated):
+
+  ```bash
+  python -m src.data.screening export --second [--fraction 0.25]  # blind sheets → data/processed/screening/second/
+  python -m src.data.screening import --second path/to/second/*.csv  # → data/decisions/second/{domain}.csv
+  python -m src.data.screening compare                            # agreement, kappa, disagreements.csv
+  ```
+
+  - **Sheets are blind.** They contain a seeded random `fraction` of already-reviewed candidates, picked
+    within each first-round status. First-round decisions and Cancer-Myth premises are hidden.
+  - **Separate storage.** Second-round decisions never overwrite first-round ones. `reviewed_by` is required
+    and must differ from the first reviewer.
+  - **Disagreements.** `compare` prints agreement and Cohen's kappa per domain. It writes
+    `data/decisions/disagreements.csv`, listing status disagreements and different premises on rows both
+    reviewers included, with blank adjudication columns. The adjudicator records the outcome there and
+    imports the final decision as a normal import with `review_status=adjudicated`.
 - **The sampler writes only when every target is met.** Otherwise it reports the shortfall and exits 1.
   Group IDs (`onc-001`…) are assigned in a seeded shuffle, so they don't reveal labels.
   `data/questions_manifest.csv` (IDs and labels only, committed), together with the raw-data checksums, is

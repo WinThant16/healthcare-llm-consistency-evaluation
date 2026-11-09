@@ -140,3 +140,103 @@ def test_pilot_covers_slots_and_is_subset_of_main(dirs):
     assert validate_rows(pilot, "final") == []
     main_ids = {q["candidate_id"] for q in sample.build(pool_dir, decision_dir)[0]}
     assert {p["candidate_id"] for p in pilot} <= main_ids
+
+
+# --- import storage rules, second review, export guard ---------------------------------------------
+
+def decision(row, status="include", premise="", reviewer="win", reason=""):
+    return {"candidate_id": row["candidate_id"], "eligibility_status": status, "eligibility_reason": reason,
+            "target_false_premise": premise, "reviewed_by": reviewer, "review_status": ""}
+
+
+def test_import_rejects_premise_on_escalation_items(dirs):
+    pools, pool_dir, decision_dir, tmp = dirs
+    write_sheet(tmp / "s.csv", [decision(pools["acute_triage"][0], premise="Possible stroke")])
+    assert screening.import_sheets([tmp / "s.csv"], pool_dir, decision_dir) == 1
+
+
+def test_import_stores_only_reviewer_written_premises(dirs):
+    pools, pool_dir, decision_dir, tmp = dirs
+    ph = [r for r in pools["public_health"] if not r["is_control"]]
+    onc = next(r for r in pools["oncology"] if not r["is_control"])
+    write_sheet(tmp / "s.csv", [
+        decision(ph[0], premise=ph[0]["target_false_premise"]),             # unedited prefill → dropped
+        decision(ph[1], premise="Edited wording"),                          # edited → kept
+        decision(ph[2], "exclude", "Edited but excluded", reason="other"),  # excluded → dropped
+        decision(onc, premise="Reviewer-written premise"),                  # Cancer-Myth → kept
+    ])
+    assert screening.import_sheets([tmp / "s.csv"], pool_dir, decision_dir) == 0
+    ph_dec = screening.load_decisions("public_health", decision_dir)
+    assert [ph_dec[r["candidate_id"]]["target_false_premise"] for r in ph[:3]] == ["", "Edited wording", ""]
+    assert screening.load_decisions("oncology", decision_dir)[onc["candidate_id"]]["target_false_premise"] == "Reviewer-written premise"
+    applied = screening.apply_decisions(ph[:1], ph_dec)  # prefill still reaches the dataset
+    assert applied[0]["target_false_premise"] == ph[0]["target_false_premise"]
+
+
+def test_normalize_cleans_existing_files(dirs):
+    pools, pool_dir, decision_dir, tmp = dirs
+    ph = next(r for r in pools["public_health"] if not r["is_control"])
+    tri = pools["acute_triage"][0]
+    for domain, rows in (("public_health", [decision(ph, premise=ph["target_false_premise"])]),
+                         ("acute_triage", [decision(tri, premise="Possible stroke")])):
+        screening.write_decisions({r["candidate_id"]: r for r in rows}, domain,
+                                  [r["candidate_id"] for r in pools[domain]], decision_dir)
+    assert screening.normalize(pool_dir, decision_dir) == 2
+    assert screening.load_decisions("public_health", decision_dir)[ph["candidate_id"]]["target_false_premise"] == ""
+    assert screening.load_decisions("acute_triage", decision_dir)[tri["candidate_id"]]["target_false_premise"] == ""
+    assert screening.normalize(pool_dir, decision_dir) == 0
+
+
+def test_export_refuses_to_overwrite_sheets(dirs):
+    pools, pool_dir, decision_dir, tmp = dirs
+    screening.export(1.0, pool_dir, tmp / "sheets", decision_dir)
+    with pytest.raises(FileExistsError):
+        screening.export(1.0, pool_dir, tmp / "sheets", decision_dir)
+    screening.export(1.0, pool_dir, tmp / "sheets", decision_dir, force=True)
+
+
+def test_second_review_round_trip(dirs):
+    pools, pool_dir, decision_dir, tmp = dirs
+    first = include_all(pools)
+    for d in first[:30]:
+        d.update(eligibility_status="exclude", eligibility_reason="duplicate")
+    write_sheet(tmp / "first.csv", first)
+    screening.import_sheets([tmp / "first.csv"], pool_dir, decision_dir)
+    before = {d: screening.load_decisions(d, decision_dir) for d in TARGETS}
+
+    paths = screening.export(pool_dir=pool_dir, sheet_dir=tmp / "sheets", decision_dir=decision_dir,
+                             second=True, fraction=0.25)
+    sheets = {}
+    for p in paths:
+        with open(p, encoding="utf-8-sig") as f:
+            sheets[p.stem] = list(csv.DictReader(f))
+    tri = sheets["acute_triage"]
+    assert len(tri) == 25  # 25% of 100 reviewed triage rows, per status stratum
+    assert all(r["eligibility_status"] == "" and r["reviewed_by"] == "" for rows in sheets.values() for r in rows)
+    onc_positive = next(r for r in sheets["oncology"] if r["gold_label_mapped"] == "correction_required")
+    assert onc_positive["target_false_premise"] == ""  # first-round premise is hidden
+
+    same_reviewer = [{**r, "eligibility_status": "include", "reviewed_by": "win;advait",
+                      "target_false_premise": ""} for r in tri]
+    write_sheet(tmp / "bad.csv", [{k: r[k] for k in screening.DECISION_FIELDS} for r in same_reviewer])
+    assert screening.import_sheets([tmp / "bad.csv"], pool_dir, decision_dir, second=True) == len(tri)
+
+    second = [{"candidate_id": r["candidate_id"], "eligibility_status": "include" if i % 5 else "exclude",
+               "eligibility_reason": "" if i % 5 else "insufficient_context", "target_false_premise": "",
+               "reviewed_by": "sahil", "review_status": "independently_reviewed"} for i, r in enumerate(tri)]
+    write_sheet(tmp / "second.csv", second)
+    assert screening.import_sheets([tmp / "second.csv"], pool_dir, decision_dir, second=True) == 0
+    assert {d: screening.load_decisions(d, decision_dir) for d in TARGETS} == before  # first round untouched
+
+    stats, log = screening.compare(pool_dir, decision_dir)
+    expected_disagreements = sum((before["acute_triage"][r["candidate_id"]]["eligibility_status"])
+                                 != r["eligibility_status"] for r in second)
+    assert stats["acute_triage"]["double_reviewed"] == 25
+    assert len(log) == expected_disagreements > 0
+    assert (decision_dir / screening.DISAGREEMENTS).exists()
+
+
+def test_cohen_kappa():
+    assert screening.cohen_kappa([("a", "a"), ("b", "b")]) == 1
+    assert screening.cohen_kappa([("a", "b"), ("b", "a")]) == -1
+    assert screening.cohen_kappa([]) is None
