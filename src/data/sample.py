@@ -26,7 +26,7 @@ from pathlib import Path
 
 from src.data.sampling import SEED, TARGETS, priority_order, secondary_key
 from src.data.schema import DOMAINS, validate_rows, write_jsonl
-from src.data.screening import DECISION_DIR, POOL_DIR, apply_decisions, load_decisions, load_pool
+from src.data.screening import DECISION_DIR, POOL_DIR, apply_decisions, load_effective_decisions, load_pool
 
 QUESTIONS = Path("data/processed/questions.jsonl")
 MANIFEST = Path("data/questions_manifest.csv")
@@ -63,7 +63,7 @@ def build(pool_dir=POOL_DIR, decision_dir=DECISION_DIR, seed=SEED):
     """Return ``(questions, report, short)`` across all domains."""
     questions, report, short = [], {}, False
     for domain, targets in TARGETS.items():
-        rows = apply_decisions(load_pool(domain, pool_dir), load_decisions(domain, decision_dir))
+        rows = apply_decisions(load_pool(domain, pool_dir), load_effective_decisions(domain, decision_dir))
         selected, domain_report = select(rows, targets, seed)
         report[domain] = domain_report
         short |= any(have < need for have, need in domain_report.values())
@@ -77,7 +77,7 @@ def build_pilot(pool_dir=POOL_DIR, decision_dir=DECISION_DIR, seed=SEED):
     ordered = {}
     for domain, gold in PILOT_SLOTS:
         if domain not in ordered:
-            rows = apply_decisions(load_pool(domain, pool_dir), load_decisions(domain, decision_dir))
+            rows = apply_decisions(load_pool(domain, pool_dir), load_effective_decisions(domain, decision_dir))
             ordered[domain] = priority_order(rows, seed)
         row = next((r for r in ordered[domain].get(gold, []) if r["eligibility_status"] == "include"), None)
         if row is None:
