@@ -102,7 +102,7 @@ What exists today (✓) and what is planned. Create a planned directory when you
 ├── src/
 │   ├── main.py                   ✓ Cancer-Myth loader smoke test
 │   ├── data/                       loaders and source-to-gold mapping, one module per dataset
-│   ├── paraphrase/
+│   ├── paraphrase/             ✓ generate, check, review, redo, qc (docs/paraphrase_guide.md)
 │   ├── run_models/
 │   ├── score/
 │   └── analyze/

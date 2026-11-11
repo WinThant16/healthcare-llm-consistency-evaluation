@@ -38,7 +38,7 @@ Protocol v1.0 (5 Oct 2026), as amended by the proposed v1.1.
 | Candidate pools, schema, validator | Advait | ✅ |
 | Screening tools, sampler, pilot selector | Advait | ✅ code ready, awaiting human screening |
 | Gold labels and annotation guide | Win | ✅ guide v1; labeling in progress |
-| Paraphrases | Sahil | ⬜ |
+| Paraphrases | Sahil | 🟨 pipeline + prompts v1 ready (`src/paraphrase/`); pilot run pending |
 | Model runner (incl. Jev access) | Engineering lead | ⬜ |
 | Scoring and analysis | Bruce | ⬜ |
 
@@ -76,6 +76,7 @@ python -m src.data.sample                  # → data/processed/questions.jsonl 
 | [`docs/protocol_v1.1_amendment.md`](docs/protocol_v1.1_amendment.md) | UPHILL and Jev changes (proposed) |
 | [`docs/annotation_guide_v1.1.md`](docs/annotation_guide_v1.1.md) | Labeling rules, QC workflow, response annotation format |
 | [`docs/schedule.md`](docs/schedule.md) | Task board, milestones, open decisions |
+| [`docs/paraphrase_guide.md`](docs/paraphrase_guide.md) | Paraphrase styles, workflow, review-sheet instructions |
 | [`docs/proposal.pdf`](docs/proposal.pdf) | Original proposal and execution plan (superseded where the freeze differs) |
 | [`data/README.md`](data/README.md) | Datasets, candidate pools, screening and sampling |
 
