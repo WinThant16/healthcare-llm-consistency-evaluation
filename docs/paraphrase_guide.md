@@ -5,6 +5,10 @@
 pilot run.
 
 Stage 3 of the pipeline (codebase.md §2): `data/processed/questions.jsonl` → `data/processed/variants.jsonl`.
+The working copy lives in `data/processed/paraphrase/{set}/`. Once every paraphrase of the full set is valid,
+`python -m src.paraphrase validate --set full --write` copies it to the documented path (§5.2), and refuses
+to if anything is missing or not valid. For the pilot, point any pilot run at
+`data/processed/paraphrase/pilot/variants.jsonl`.
 Each question group gets the original plus three paraphrases (`p1`, `p2`, `p3`).
 
 ## Design
@@ -53,6 +57,7 @@ python -m src.paraphrase export --set pilot --force
 # 6. QC report (no source text, safe to commit) and the production gate
 python -m src.paraphrase qc --set pilot --out report/paraphrase_qc_pilot.md
 python -m src.paraphrase validate --set pilot     # exit 0 only if every group has 4 valid variants
+python -m src.paraphrase validate --set full --write   # full set only: writes data/processed/variants.jsonl
 ```
 
 Use `--set full` for the 240 groups after `data-v1.0` is tagged. Use `--limit 3` on the first `generate` to look
@@ -67,7 +72,8 @@ They miss problems and raise false alarms.
 
 1. **Review independently.** Reviewer 1 fills `reviewer_1`, `validity_1`, `reason_1`. Reviewer 2 fills the `_2`
    columns, without looking at reviewer 1's. The simplest way is for each of you to fill your own copy of the
-   sheet, then paste your columns into one file before importing. Reviewer IDs must differ.
+   sheet, then paste your columns into one file before importing. Reviewer IDs must differ. They are stored lowercase
+   (`sahil`, `win`, like the screening decisions) and compared case-insensitively, so `Win` and `win` are one person.
 2. **Validity values:** `valid`, `invalid` or `needs_review`. Apply guide §6, comparing side by side:
    - same symptoms, severity, duration, timing, patient details and risk factors
    - same false assumption, exactly as firm (correction positives); no new assumption (controls)
@@ -88,17 +94,18 @@ nothing is half-written.
 | Path | Contents | Committed? |
 |---|---|---|
 | `prompts/paraphrase_generate_v1.md`, `prompts/paraphrase_judge_v1.md` | Versioned prompts (never edit once used) | Yes |
-| `data/processed/paraphrase/{set}/variants.jsonl` | §5.2 rows: `group_id`, `variant_id`, `text`, `generator`, `validity`, `validity_reason`, `verified_by` | No (source-derived) |
+| `data/processed/paraphrase/{set}/variants.jsonl` | Working copy, §5.2 rows: `group_id`, `variant_id`, `text`, `generator`, `validity`, `validity_reason`, `verified_by` | No (source-derived) |
 | `data/processed/paraphrase/{set}/generation_log.jsonl` | One row per model call: settings, model version, tokens, latency, attempt, errors | No |
 | `data/processed/paraphrase/{set}/checks.jsonl` | Rule flags and judge verdicts, keyed by text hash | No |
 | `data/processed/paraphrase/{set}/review.csv` | Review sheet | No |
 | `data/processed/paraphrase/cache.jsonl` | API response cache: share it privately to reproduce the exact text | No |
-| `data/decisions/paraphrase/{set}.csv` | Reviewer decisions keyed by `group_id`, `variant_id`, `text_sha` | **Yes** |
+| `data/processed/variants.jsonl` | The validated full set, written by `validate --set full --write` (§5.2). The runner reads this | No (source-derived) |
+| `data/decisions/paraphrase/{set}.csv` | Reviewer decisions keyed by `group_id`, `variant_id`, `text_sha`. Plain UTF-8, `\n` line endings | **Yes** |
 | `report/paraphrase_qc_{set}.md` | QC report: counts, agreement, check performance | Yes |
 
 Decisions are tied to a hash of the exact text reviewed. A regenerated paraphrase starts again at
-`needs_review`, and the old decision stays on record. The runner should read `variants.jsonl` only after
-`validate` passes.
+`needs_review`, and the old decision stays on record. The runner reads `data/processed/variants.jsonl`, which only
+`validate --set full --write` can create, and only when everything is valid.
 
 ## Open decisions
 

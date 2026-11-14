@@ -184,9 +184,12 @@ def run_checks(questions, files, judge=None, prompt_dir=prompts.PROMPT_DIR, log=
     return {"checked": new, "flagged": flagged}
 
 
-def write_csv(path, fieldnames, rows):
+def write_csv(path, fieldnames, rows, committed=False):
+    """Write a CSV. Files that go into git (``committed=True``) are plain UTF-8 with ``\\n`` line endings, so a
+    re-import on any operating system leaves them unchanged. Other sheets keep a BOM and ``\\r\\n`` so
+    Excel opens them correctly."""
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames)
+    with open(path, "w", newline="", encoding="utf-8" if committed else "utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n" if committed else "\r\n")
         w.writeheader()
         w.writerows(rows)

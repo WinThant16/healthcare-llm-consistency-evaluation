@@ -43,19 +43,28 @@ def build_report(questions, files, set_name):
 
     out = [f"# Paraphrase QC report: `{set_name}`", ""]
     errors = validate_variants(list(variants.values()), group_ids, require_complete=True)
-    out += ["**Ready for the model run:** " + ("yes" if not errors else f"no ({len(errors)} problems; "
-            "first: " + errors[0] + ")"), ""]
+    out += ["**Pipeline checks:** " + ("pass (every group has all four variants and every paraphrase is valid)"
+            if not errors else f"fail ({len(errors)} problems; first: {errors[0]})"), ""]
 
     gen = sorted({(r["settings"]["provider"], r["model_version"] or r["settings"]["model"],
                    r["settings"]["temperature"], r["prompt_version"]) for r in log if not r.get("error")})
     out += ["## Setup", "",
             _table(["Provider", "Generator model", "Temperature", "Prompt"], gen) if gen else "No generation calls logged.",
             "", "Styles: " + ", ".join(f"`{k}` = {v}" for k, v in STYLES.items()) + ".", ""]
+    judges = sorted({c["judge_model"] for c in checks.values() if c.get("judge_model")})
+    out += ["Judge model: " + (", ".join(judges) if judges else "none (rule flags only)") + ".", ""]
+    if any(row[0] not in {"anthropic", "openai"} for row in gen):
+        out += ["**Note:** this set was written by hand in a chat session, not through the pipeline's `generate` "
+                "step, so no API generator or judge has been used on it. The models for the full run are still to "
+                "be chosen by the team.", ""]
     tok_in = sum(r.get("tokens_in") or 0 for r in log if not r.get("cached"))
     tok_out = sum(r.get("tokens_out") or 0 for r in log if not r.get("cached"))
     redo_calls = sum(1 for r in log if r["attempt"] > 1 and not r.get("error"))
-    out += [f"Generation calls: {len(log)} ({sum(1 for r in log if r.get('error'))} failed, "
-            f"{redo_calls} regenerations). New tokens billed: {tok_in} in, {tok_out} out.", ""]
+    rejected = sum(1 for d in decisions.values() if d["effective_validity"] == "invalid")
+    after_review = min(redo_calls, rejected)
+    out += [f"Generation calls: {len(log)} ({sum(1 for r in log if r.get('error'))} failed). Regenerations: "
+            f"{redo_calls} ({after_review} after a reviewer rejected a paraphrase, {redo_calls - after_review} "
+            f"before review). New tokens billed: {tok_in} in, {tok_out} out.", ""]
 
     # Current status by domain and style
     out += ["## Current validity", ""]
@@ -84,8 +93,9 @@ def build_report(questions, files, set_name):
             fp["invalid" if any(d["effective_validity"] == "invalid" for d in final) else "valid"] += 1
     n_fp = sum(fp.values())
     out += ["## First-pass quality", "",
-            f"Of {n_fp} paraphrases with a final decision, {_pct(fp['valid'], n_fp)} were valid on the first "
-            f"attempt and {_pct(fp['invalid'], n_fp)} needed regeneration.", ""]
+            f"Of {n_fp} paraphrases with a final decision, {_pct(fp['valid'], n_fp)} were valid when first "
+            f"reviewed and {_pct(fp['invalid'], n_fp)} were rejected by a reviewer and regenerated. "
+            "(Regenerations before review are not counted here.)", ""]
 
     # Reviewer agreement
     pairs = [(d["validity_1"], d["validity_2"]) for d in decisions.values() if d["validity_1"] and d["validity_2"]]

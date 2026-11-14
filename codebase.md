@@ -196,7 +196,10 @@ One row per variant, including the original. Labels are inherited from the group
 | `text` | prompt text sent to the model |
 | `generator` | `source`, `manual`, or exact model ID |
 | `validity` | `valid`, `invalid`, `needs_review` (guide §6) |
-| `validity_reason`, `verified_by` | |
+| `validity_reason`, `verified_by` | `verified_by` is `source` for the original and the two reviewer IDs (lowercase, joined by `;`) for paraphrases |
+
+The working copy is `data/processed/paraphrase/{set}/variants.jsonl`. `python -m src.paraphrase validate --set full --write`
+writes this file only when every group has all four variants and every paraphrase is `valid`.
 
 ### 5.3 Response: `outputs/responses/{run_id}/{model_key}.jsonl`
 

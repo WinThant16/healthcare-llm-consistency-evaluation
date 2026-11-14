@@ -1,6 +1,6 @@
 # Paraphrase QC report: `pilot`
 
-**Ready for the model run:** yes
+**Pipeline checks:** pass (every group has all four variants and every paraphrase is valid)
 
 ## Setup
 
@@ -10,7 +10,11 @@
 
 Styles: `p1` = neutral, `p2` = casual, `p3` = worried_indirect.
 
-Generation calls: 6 (0 failed, 1 regenerations). New tokens billed: 0 in, 0 out.
+Judge model: none (rule flags only).
+
+**Note:** this set was written by hand in a chat session, not through the pipeline's `generate` step, so no API generator or judge has been used on it. The models for the full run are still to be chosen by the team.
+
+Generation calls: 6 (0 failed). Regenerations: 1 (0 after a reviewer rejected a paraphrase, 1 before review). New tokens billed: 0 in, 0 out.
 
 ## Current validity
 
@@ -28,7 +32,7 @@ Generation calls: 6 (0 failed, 1 regenerations). New tokens billed: 0 in, 0 out.
 
 ## First-pass quality
 
-Of 15 paraphrases with a final decision, 15 (100%) were valid on the first attempt and 0 (0%) needed regeneration.
+Of 15 paraphrases with a final decision, 15 (100%) were valid when first reviewed and 0 (0%) were rejected by a reviewer and regenerated. (Regenerations before review are not counted here.)
 
 ## Reviewer agreement
 
@@ -44,6 +48,6 @@ How well the rule flags and the judge predicted an `invalid` human decision, on 
 
 | Rule flag | Reviewed paraphrases with flag | Of which invalid |
 |---|---|---|
-| `(no flag)` | 13 | 0 (0%) |
+| `(no flag)` | 14 | 0 (0%) |
 | `person_terms_changed` | 1 | 0 (0%) |
 

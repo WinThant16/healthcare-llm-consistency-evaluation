@@ -38,7 +38,7 @@ Protocol v1.0 (5 Oct 2026), as amended by the proposed v1.1.
 | Candidate pools, schema, validator | Advait | ✅ |
 | Screening tools, sampler, pilot selector | Advait | ✅ code ready, awaiting human screening |
 | Gold labels and annotation guide | Win | ✅ guide v1; labeling in progress |
-| Paraphrases | Sahil | 🟨 pipeline + prompts v1 ready (`src/paraphrase/`); pilot run pending |
+| Paraphrases | Sahil | 🟨 pipeline + prompts v1 done (`src/paraphrase/`); pilot reviewed (15/15 valid, hand-written); full run waits on generator/judge models, review split and `data-v1.0` |
 | Model runner (incl. Jev access) | Engineering lead | ⬜ |
 | Scoring and analysis | Bruce | ⬜ |
 

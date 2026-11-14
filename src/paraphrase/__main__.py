@@ -7,6 +7,7 @@
     python -m src.paraphrase import   --set pilot data/processed/paraphrase/pilot/review.csv
     python -m src.paraphrase redo     --set pilot --provider anthropic --model <generator-model>
     python -m src.paraphrase qc       --set pilot [--out report/paraphrase_qc_pilot.md]
+    python -m src.paraphrase validate --set full --write   # → data/processed/variants.jsonl (only if all valid)
 
 ``--set pilot`` reads ``data/processed/pilot.jsonl``; ``--set full`` reads ``data/processed/questions.jsonl``.
 Use the **same** generator settings for ``generate`` and ``redo`` within a set.
@@ -18,7 +19,7 @@ from pathlib import Path
 
 from src.paraphrase import pipeline, qc, review
 from src.paraphrase.llm import Cache, LLMClient, LLMError, load_dotenv
-from src.paraphrase.variants import SETS, paths, validate_variants
+from src.paraphrase.variants import FINAL_VARIANTS, SETS, paths, validate_variants, write_final
 
 
 def _temperature(value):
@@ -57,6 +58,8 @@ def main(argv=None):
     ap.add_argument("--force", action="store_true", help="export: overwrite an existing review sheet")
     ap.add_argument("--all", action="store_true", help="export: include already-decided paraphrases")
     ap.add_argument("--out", help="qc: also write the report to this markdown file")
+    ap.add_argument("--write", action="store_true",
+                    help="validate: with --set full, write the validated set to data/processed/variants.jsonl")
     args = ap.parse_args(argv)
 
     load_dotenv()
@@ -98,7 +101,8 @@ def main(argv=None):
             print(report)
             if args.out:
                 Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-                Path(args.out).write_text(report + "\n", encoding="utf-8")
+                with open(args.out, "w", encoding="utf-8", newline="\n") as f:  # committed: LF on every OS
+                    f.write(report + "\n")
         elif args.command == "validate":
             from src.paraphrase.variants import load_variants
             rows = list(load_variants(files["variants"]).values())
@@ -106,7 +110,15 @@ def main(argv=None):
             for e in errs:
                 print(e)
             print("OK: all groups complete and valid" if not errs else f"{len(errs)} problems")
-            return 1 if errs else 0
+            if errs:
+                return 1
+            if args.write:
+                if args.set_name != "full":
+                    sys.exit("error: --write is only for --set full. For the pilot, read "
+                             f"{files['variants']} directly.")
+                n = write_final(files, [q["group_id"] for q in questions])
+                print(f"wrote {n} variants to {FINAL_VARIANTS}")
+            return 0
     except (LLMError, ValueError, FileExistsError) as e:
         sys.exit(f"error: {e}")
     return 0

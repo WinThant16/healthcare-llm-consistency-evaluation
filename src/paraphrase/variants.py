@@ -73,6 +73,20 @@ def save_variants(variants, path, group_order=None):
     write_jsonl(rows, path)
 
 
+FINAL_VARIANTS = Path("data/processed/variants.jsonl")  # codebase.md §5.2, the path the runner reads
+
+
+def write_final(files, group_ids, out=FINAL_VARIANTS):
+    """Write the validated set to the documented ``variants.jsonl``. Refuses unless every group has all four
+    variants and every paraphrase is valid, so the runner can never read half-reviewed text."""
+    variants = load_variants(files["variants"])
+    errors = validate_variants(list(variants.values()), group_ids, require_complete=True)
+    if errors:
+        raise ValueError(f"not writing {out}: {len(errors)} problems, first: {errors[0]}")
+    save_variants(variants, out, group_ids)
+    return len(variants)
+
+
 def validate_variants(rows, group_ids=None, require_complete=False):
     """Return a list of error strings. With ``require_complete``, every group must have all four variants
     and every variant must be ``valid`` (the production gate)."""
@@ -91,7 +105,7 @@ def validate_variants(rows, group_ids=None, require_complete=False):
         if r["validity"] in {"invalid", "needs_review"} and not r["validity_reason"]:
             errors.append(f"line {i}: validity_reason required when validity is {r['validity']!r}")
         if r["validity"] == "valid" and r["variant_id"] != "original":
-            reviewers = {x for x in (r["verified_by"] or "").split(";") if x.strip()}
+            reviewers = {x.strip().lower() for x in (r["verified_by"] or "").split(";") if x.strip()}
             if len(reviewers) < 2:
                 errors.append(f"line {i}: a valid paraphrase needs two distinct reviewers in verified_by")
         key = (r["group_id"], r["variant_id"])

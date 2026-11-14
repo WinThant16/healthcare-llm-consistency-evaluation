@@ -6,7 +6,7 @@ import pytest
 from src.data.schema import make_row, read_jsonl
 from src.paraphrase import checks, pipeline, prompts, qc, review
 from src.paraphrase.llm import Cache, LLMClient, parse_json_object
-from src.paraphrase.variants import paths, text_sha, validate_variants
+from src.paraphrase.variants import paths, text_sha, validate_variants, write_final
 
 
 class FakeClient:
@@ -207,6 +207,7 @@ def test_full_review_cycle(questions, files):
     assert rows[("tri-901", "p3")]["validity"] == "invalid"
     # Committed decisions contain no question or paraphrase text.
     decisions_text = files["decisions"].read_text(encoding="utf-8")
+    assert files["review"].read_bytes().startswith(b"\xef\xbb\xbf")  # review sheet keeps its BOM for Excel
     assert "Original question" not in decisions_text and "version of the question" not in decisions_text
 
     # Regenerate the invalid one; it goes back to needs_review with new text.
@@ -227,9 +228,10 @@ def test_full_review_cycle(questions, files):
                                  require_complete=True)
 
     report = qc.build_report(questions, files, "pilot")
-    assert "**Ready for the model run:** yes" in report
+    assert "**Pipeline checks:** pass" in report and "Ready for the model run" not in report
     assert "Original question" not in report
-    assert "needed regeneration" in report and "1 (11%)" in report
+    assert "rejected by a reviewer and regenerated" in report and "1 (11%)" in report
+    assert "Regenerations: 1 (1 after a reviewer rejected a paraphrase, 0 before review)" in report
 
 
 def test_import_rejects_bad_rows_atomically(questions, files):
@@ -308,3 +310,83 @@ def test_request_shapes(monkeypatch):
                                    cache=Cache("/nonexistent/x"))._request("s", "u")
     assert url == "https://example.com/v1/chat/completions" and "temperature" not in body
     assert body["seed"] == 3 and body["max_completion_tokens"] == 1024
+
+
+# --- PR review fixes: committed-file format, reviewer IDs, final export, QC wording ---------------------
+
+def test_committed_decisions_are_plain_utf8_with_lf(questions, files):
+    pipeline.generate(questions, files, FakeClient(), log=lambda *_: None)
+    review.export_sheet(questions, files)
+    _fill(files["review"], lambda r: r.update(reviewer_1="sahil", validity_1="valid", reviewer_2="win",
+                                              validity_2="valid"))
+    review.import_sheets([files["review"]], questions, files, log=lambda *_: None)
+    raw = files["decisions"].read_bytes()
+    assert not raw.startswith(b"\xef\xbb\xbf") and b"\r" not in raw
+    # Importing again leaves the file byte-for-byte unchanged (no churn in git).
+    review.import_sheets([files["review"]], questions, files, log=lambda *_: None)
+    assert files["decisions"].read_bytes() == raw
+
+
+def test_reviewer_ids_are_stored_lowercase(questions, files):
+    pipeline.generate(questions, files, FakeClient(), log=lambda *_: None)
+    review.export_sheet(questions, files)
+    _fill(files["review"], lambda r: r.update(reviewer_1="Sahil", validity_1="valid", reviewer_2="WIN",
+                                              validity_2="valid"))
+    review.import_sheets([files["review"]], questions, files, log=lambda *_: None)
+    assert {r["verified_by"] for r in read_jsonl(files["variants"]) if r["variant_id"] != "original"} == {"sahil;win"}
+    text = files["decisions"].read_text(encoding="utf-8")
+    assert "Sahil" not in text and "WIN" not in text and ",sahil," in text and ",win," in text
+
+
+def test_import_rejects_same_reviewer_in_different_case(questions, files):
+    pipeline.generate(questions, files, FakeClient(), log=lambda *_: None)
+    review.export_sheet(questions, files)
+    _fill(files["review"], lambda r: r.update(reviewer_1="Win", validity_1="valid", reviewer_2="win",
+                                              validity_2="valid"))
+    with pytest.raises(ValueError):
+        review.import_sheets([files["review"]], questions, files, log=lambda *_: None)
+
+
+def test_validate_counts_win_and_Win_as_one_person():
+    row = {"group_id": "g", "variant_id": "p1", "text": "t", "generator": "m", "validity": "valid",
+           "validity_reason": None, "verified_by": "win;Win"}
+    assert any("two distinct reviewers" in e for e in validate_variants([row]))
+    assert not validate_variants([dict(row, verified_by="sahil;Win")])
+
+
+def test_write_final_only_when_everything_is_valid(questions, files, tmp_path):
+    out = tmp_path / "final" / "variants.jsonl"
+    ids = [x["group_id"] for x in questions]
+    pipeline.generate(questions, files, FakeClient(), log=lambda *_: None)
+    with pytest.raises(ValueError, match="not writing"):
+        write_final(files, ids, out=out)
+    assert not out.exists()
+    review.export_sheet(questions, files)
+    _fill(files["review"], lambda r: r.update(reviewer_1="sahil", validity_1="valid", reviewer_2="win",
+                                              validity_2="valid"))
+    review.import_sheets([files["review"]], questions, files, log=lambda *_: None)
+    assert write_final(files, ids, out=out) == 12
+    rows = read_jsonl(out)
+    assert [r["variant_id"] for r in rows[:4]] == ["original", "p1", "p2", "p3"]
+    assert not validate_variants(rows, ids, require_complete=True)
+
+
+def test_qc_wording_for_regeneration_before_review_and_hand_written_sets(questions, files):
+    client = FakeClient()
+    pipeline.generate(questions, files, client, log=lambda *_: None)
+    pipeline._append(files["log"], pipeline._log_row(questions[2], ["p3"], 2, client.complete("s", "u"), client,
+                                                      reason="pre-review revision"))
+    report = qc.build_report(questions, files, "pilot")
+    assert "Regenerations: 1 (0 after a reviewer rejected a paraphrase, 1 before review)" in report
+    assert "**Pipeline checks:** fail" in report  # nothing reviewed yet
+    assert "written by hand in a chat session" in report  # FakeClient's provider is not a real API provider
+    assert "Judge model: none (rule flags only)." in report
+
+
+def test_qc_has_no_hand_written_note_for_api_generators(questions, files):
+    class ApiClient(FakeClient):
+        @property
+        def settings(self):
+            return {**super().settings, "provider": "anthropic"}
+    pipeline.generate(questions, files, ApiClient(), log=lambda *_: None)
+    assert "written by hand" not in qc.build_report(questions, files, "pilot")
