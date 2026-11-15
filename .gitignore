@@ -21,3 +21,6 @@ data/processed/candidates/
 data/processed/screening/
 data/processed/questions.jsonl
 data/processed/pilot.jsonl
+# Paraphrase stage: variants, review sheets, checks and the API cache contain source-derived text.
+# Only data/decisions/paraphrase/*.csv (IDs, hashes, decisions) is committed.
+data/processed/paraphrase/
