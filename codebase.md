@@ -66,7 +66,7 @@ win. Fix this file in a PR.
 | 1. Collect candidates, schemas, master dataset | **Advait**, project & data lead | `data/processed/questions.jsonl`, dataset docs | `src/data/` |
 | 2. Eligibility, gold labels, evidence, adjudication | **Win**, clinical-labeling lead | Gold labels, annotation guide | n/a |
 | 3. Paraphrase generation and meaning check | **Sahil**, paraphrase & quality lead | `data/processed/variants.jsonl`, QC report | `src/paraphrase/` |
-| 4. Model APIs, prompts, experiment runner | **Engineering lead** (Member 4; Abhi?, to be confirmed) | Reproducible runner, raw responses, logs | `src/run_models/` |
+| 4. Model APIs, prompts, experiment runner | **Abhi**, engineering lead | Reproducible runner, raw responses, logs | `src/run_models/` |
 | 5–6. Scoring mapper, human audit stats, metrics, plots | **Bruce**, evaluation & analysis lead | Scores, GIR, CIs, figures | `src/score/`, `src/analyze/` |
 
 **Required pairings.** Advait and Win review inclusion and labels. Win and Sahil verify paraphrase meaning.
@@ -83,7 +83,7 @@ What exists today (✓) and what is planned. Create a planned directory when you
 .
 ├── README.md                     ✓ project overview
 ├── codebase.md                   ✓ this file
-├── requirements.txt              ✓ pandas, pyarrow
+├── requirements.txt              ✓ pandas, pyarrow, provider SDKs
 ├── .gitignore                    ✓ ignores .venv/, .env, __pycache__/
 ├── docs/
 │   ├── annotation_guide_v1.1.md   ✓ labeling and QC rules (Win)
@@ -102,8 +102,8 @@ What exists today (✓) and what is planned. Create a planned directory when you
 ├── src/
 │   ├── main.py                   ✓ Cancer-Myth loader smoke test
 │   ├── data/                       loaders and source-to-gold mapping, one module per dataset
-│   ├── paraphrase/             ✓ generate, check, review, redo, qc (docs/paraphrase_guide.md)
-│   ├── run_models/
+│   ├── paraphrase/               ✓ generate, check, review, redo, qc (docs/paraphrase_guide.md)
+│   ├── run_models/               ✓ runner, provider clients, model settings
 │   ├── score/
 │   └── analyze/
 ├── outputs/                        responses/, annotations/, metrics/, figures/
@@ -210,6 +210,17 @@ Responses are **write-once**. To fix a problem, start a new `run_id` (`run-YYYYM
 (`model_key`, exact `model_version`, `prompt_version`, temperature/seed/max_tokens, tokens, latency, cost,
 timestamp) go in a **separate metadata table** keyed by `response_id`. That way reviewers and the mapper
 stay blind (guide §8).
+
+The runner (`python -m src.run_models.runner`) writes these files to the run directory:
+
+- `{model_key}.jsonl`: the response rows above. `error` is set only for a model outcome that leaves the
+  response unusable (`refusal`, or cut off at the API token cap).
+- `metadata.jsonl`: the metadata table. It also has `visible_output_tokens` and `over_visible_cap`, because
+  the 512-token limit applies to visible text and neither chat API can cap that separately from reasoning.
+- `run.json`: settings, prompt hashes and the git commit.
+- `errors.jsonl`: API failures that outlasted the retries. Rerun the same command to fill those gaps.
+
+`outputs/responses/` is git-ignored because responses can quote source-derived question text.
 
 ### 5.4 Annotation: `outputs/annotations/{run_id}/{scorer}.jsonl`
 
