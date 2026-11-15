@@ -2,3 +2,7 @@ pandas
 pyarrow
 gdown
 pytest
+anthropic
+openai
+typesafe-sdk
+python-dotenv

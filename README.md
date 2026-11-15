@@ -39,7 +39,7 @@ Protocol v1.0 (5 Oct 2026), as amended by the proposed v1.1.
 | Screening tools, sampler, pilot selector | Advait | ✅ code ready, awaiting human screening |
 | Gold labels and annotation guide | Win | ✅ guide v1; labeling in progress |
 | Paraphrases | Sahil | ⬜ |
-| Model runner (incl. Jev access) | Engineering lead | ⬜ |
+| Model runner (incl. Jev access) | Abhi | 🟡 access confirmed for all three models; runner works on the pilot originals |
 | Scoring and analysis | Bruce | ⬜ |
 
 The task board with milestones and open decisions is in [`docs/schedule.md`](docs/schedule.md).
@@ -53,6 +53,19 @@ bash data/fetch_raw.sh              # downloads UPHILL (not committed) and verif
 python -m src.data.build_pools      # raw data → data/processed/candidates/{domain}.jsonl
 python -m pytest tests              # schema, loader, screening and sampling tests
 ```
+
+### Running the models
+
+Put `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and `JEV_API_KEY` in `.env`, then:
+
+```bash
+python -m src.run_models.runner --check     # verify access and print the returned model IDs
+python -m src.data.sample --pilot           # writes data/processed/pilot.jsonl
+python -m src.run_models.runner --input data/processed/pilot.jsonl --run-id run-YYYYMMDD-pilot
+```
+
+Responses go to `outputs/responses/{run_id}/` (git-ignored). A rerun with the same `--run-id` skips what is
+already saved. See [`codebase.md`](codebase.md) §5.3 for the file formats.
 
 ### From candidates to the 240 groups
 

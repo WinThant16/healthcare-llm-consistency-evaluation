@@ -21,3 +21,5 @@ data/processed/candidates/
 data/processed/screening/
 data/processed/questions.jsonl
 data/processed/pilot.jsonl
+# Raw model responses can quote source-derived question text (Cancer-Myth, UPHILL); keep them local
+outputs/responses/
