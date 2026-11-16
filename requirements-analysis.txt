@@ -1,0 +1,2 @@
+# Optional scientific figure rendering only. Core metrics/tests use the standard library.
+matplotlib>=3.8,<4
