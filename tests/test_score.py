@@ -156,29 +156,6 @@ class RunnerContractTests(Fixture):
         self.assertEqual(result["scoring_mode"], "pilot")
         self.assertEqual(load_state(self.work)["scoring_mode"], "pilot")
 
-    def test_production_mode_requires_targets(self):
-        with self.assertRaisesRegex(ValueError, "Production scoring requires --targets"):
-            self.prepare(targets=False, mode="production")
-        self.assertFalse(self.work.exists())
-
-    def test_production_mode_with_verified_targets(self):
-        result = self.prepare(mode="production")
-        self.assertEqual(result["scoring_mode"], "production")
-        self.assertEqual(result["target_context"], "verified_neutral_target")
-        self.assertTrue(all(c["assessment_target"] for c in load_state(self.work)["contexts"]
-                            if c["task"] == "correction"))
-
-    def test_production_mode_rejects_partial_or_unverified_targets(self):
-        rows = read_rows(self.targets)
-        replace_rows(self.targets, rows[:1])
-        with self.assertRaisesRegex(ValueError, "ALL correction"):
-            self.prepare(mode="production")
-        rows[0]["reviewed_by"] = " "
-        replace_rows(self.targets, rows)
-        with self.assertRaisesRegex(ValueError, "reviewed_by"):
-            self.prepare(mode="production")
-        self.assertFalse(self.work.exists())
-
     def test_unknown_mode_rejected(self):
         with self.assertRaisesRegex(ValueError, "mode must be"):
             self.prepare(mode="final")
@@ -293,6 +270,76 @@ class RunnerContractTests(Fixture):
         replace_rows(path, [])
         with self.assertRaisesRegex(ValueError, "Blind context file changed"):
             load_state(self.work)
+
+
+class ProductionTargetScopeTests(Fixture):
+    """Guide v1.2 §4.4: production needs verified targets only when the run has correction groups."""
+    SCOPES = {"triage_only": ("tri-",), "correction_only": ("onc-", "ph-"), "mixed": ("onc-", "ph-", "tri-")}
+
+    def use_scope(self, scope):
+        """Real runner output for a subset of the synthetic groups, with matching questions and targets."""
+        source = self.root / scope
+        source.mkdir()
+        questions = [q for q in read_rows(self.questions) if q["group_id"].startswith(self.SCOPES[scope])]
+        groups = {q["group_id"] for q in questions}
+        write_rows(source / "questions.jsonl", questions)
+        write_rows(source / "targets.jsonl", [t for t in read_rows(self.targets) if t["group_id"] in groups])
+        runner.run(runner.load_items(source / "questions.jsonl"), "run-" + scope.replace("_", "-"), list(MODELS),
+                   {key: SyntheticClient(key) for key in MODELS}, out_dir=source / "responses", workers=1,
+                   log=lambda *_: None)
+        self.questions, self.targets = source / "questions.jsonl", source / "targets.jsonl"
+        self.run_dir = source / "responses" / ("run-" + scope.replace("_", "-"))
+        self.work = self.root / (scope + "-work")
+        return groups
+
+    def test_triage_only_production_succeeds_without_targets(self):
+        self.use_scope("triage_only")
+        result = self.prepare(targets=False, mode="production")
+        self.assertEqual(result["scoring_mode"], "production")
+        state = load_state(self.work)
+        self.assertEqual(state["scoring_mode"], "production")
+        self.assertTrue(state["contexts"])
+        self.assertTrue(all(c["task"] == "escalation" and not c["assessment_target"] for c in state["contexts"]))
+
+    def test_triage_only_pilot_is_unchanged(self):
+        self.use_scope("triage_only")
+        result = self.prepare(targets=False)
+        self.assertEqual((result["scoring_mode"], result["target_context"]), ("pilot", "question_only_calibration"))
+
+    def test_correction_and_mixed_production_reject_missing_partial_or_unverified_targets(self):
+        for scope in ("correction_only", "mixed"):
+            with self.subTest(scope):
+                self.questions, self.targets = self.raw / "questions.jsonl", self.raw / "targets.jsonl"
+                self.use_scope(scope)
+                with self.assertRaisesRegex(ValueError, "Production scoring requires --targets"):
+                    self.prepare(targets=False, mode="production")
+                rows = read_rows(self.targets)
+                self.assertGreater(len(rows), 1)
+                replace_rows(self.targets, rows[:-1])
+                with self.assertRaisesRegex(ValueError, "ALL correction"):
+                    self.prepare(mode="production")
+                for blank in ("", " "):
+                    replace_rows(self.targets, [{**rows[0], "reviewed_by": blank}, *rows[1:]])
+                    with self.assertRaisesRegex(ValueError, "reviewed_by"):
+                        self.prepare(mode="production")
+                replace_rows(self.targets, [{**rows[0], "assessment_target": " "}, *rows[1:]])
+                with self.assertRaisesRegex(ValueError, "assessment_target"):
+                    self.prepare(mode="production")
+                self.assertFalse(self.work.exists())
+
+    def test_production_with_all_verified_targets_succeeds(self):
+        for scope in ("correction_only", "mixed"):
+            with self.subTest(scope):
+                self.questions, self.targets = self.raw / "questions.jsonl", self.raw / "targets.jsonl"
+                groups = self.use_scope(scope)
+                result = self.prepare(mode="production")
+                self.assertEqual((result["scoring_mode"], result["target_context"]),
+                                 ("production", "verified_neutral_target"))
+                contexts = load_state(self.work)["contexts"]
+                self.assertTrue(all(c["assessment_target"] for c in contexts if c["task"] == "correction"))
+                self.assertEqual(scope == "mixed", any(c["task"] == "escalation" for c in contexts))
+                self.assertEqual({t["group_id"] for t in read_rows(self.targets)},
+                                 {g for g in groups if not g.startswith("tri-")})
 
 
 class MissingDataTests(Fixture):

@@ -145,12 +145,16 @@ def read_run(run_dir, questions_file, variants_file=None, targets_file=None):
 
 def prepare(run_dir, questions, out, variants=None, targets=None, mode="pilot"):
     require(mode in SCORING_MODES, f"mode must be one of {SCORING_MODES}")
-    require(mode != "production" or targets,
-            "Production scoring requires --targets: verified neutral assessment targets for every correction "
-            "group, controls included (guide v1.2 §4.4). Question-only mode is for the pilot/calibration only.")
+    # Read and validate every input first; nothing is written until all checks pass. When a targets file
+    # is given, read_run requires exactly one target per correction group and a nonempty reviewed_by.
     state = read_run(run_dir, questions, variants, targets)
-    if mode == "production":
-        # read_run already requires full correction-group coverage and a nonempty reviewed_by per row.
+    correction_groups = {item["group_id"] for item in state["items"] if item["task"] == "correction"}
+    if mode == "production" and correction_groups:
+        # Targets apply only to correction groups; a triage-only production run needs none.
+        require(targets,
+                "Production scoring requires --targets for runs with correction groups: verified neutral "
+                "assessment targets for every correction group, controls included (guide v1.2 §4.4). "
+                "Question-only mode is for the pilot/calibration only.")
         require(state["target_context"] == "verified_neutral_target", "Production scoring needs verified targets")
     out = Path(out)
     require(not out.exists(), "Scoring workspace exists; choose a new --out")

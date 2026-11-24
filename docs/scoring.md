@@ -119,9 +119,11 @@ scoring modes, chosen with `prepare --mode` and recorded in the workspace, `stat
 | Mode | Targets | Use |
 |---|---|---|
 | `pilot` (default) | Optional. Without them the workspace is question-only (`target_context = question_only_calibration`) | Pilot and calibration only |
-| `production` | Required: `--targets` must cover every correction group, controls included, each with `reviewed_by` | All production runs |
+| `production` | Required when the run has correction groups: `--targets` must cover every correction group, controls included, each with `reviewed_by`. Not needed for a triage-only run | All production runs |
 
-`prepare --mode production` without `--targets` fails before anything is written. Question-only mode
+`prepare` reads and validates all inputs first. In production, a run with correction groups and no
+`--targets`, a partial target set, or a target without `reviewed_by` fails before anything is written.
+Triage groups never get targets, so a triage-only production run is prepared without them. Question-only mode
 cannot enforce guide §4.2 rule 3 (correcting a different misconception does not count), so its labels
 must never feed production GIR. In question-only mode the mapper infers the central proposition from
 question text, with no source gold or clinical evidence. Target alignment and control-boundary validity
