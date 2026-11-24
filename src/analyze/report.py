@@ -7,7 +7,7 @@ from pathlib import Path
 
 from . import ANALYSIS_VERSION
 from .agreement import analyze_agreement, categorical_agreement
-from .gir import make_groups, summarize
+from .gir import INVALIDATED, make_groups, pooled_secondary, summarize
 from .inputs import (CARE_LABELS, canonical, load_annotations, load_data, policy_from, provenance, require)
 
 
@@ -70,11 +70,13 @@ def error_records(data, groups):
     for group in groups:
         for variant, label in group["decisions"].items():
             source = data["decisions"].get((group["model_key"], group["group_id"], variant))
-            if label is None or label != group["expected_decision"] or (group["complete"] and group["observed_disagreement"]):
+            invalidated = variant in group["invalidated_variants"]
+            if invalidated or label is None or label != group["expected_decision"] or (group["complete"] and group["observed_disagreement"]):
                 rows.append({"model_key": group["model_key"], "group_id": group["group_id"], "variant_id": variant,
                              "response_id": source["response_id"] if source else None, "decision": label,
                              "source_gold_decision": group["expected_decision"], "status": source["status"] if source else "missing_variant_record",
                              "audit_pending": source["audit_pending"] if source else False,
+                             "invalidated_paraphrase": invalidated,
                              "group_inconsistent": group["complete"] and group["observed_disagreement"]})
     return rows
 
@@ -91,17 +93,27 @@ def markdown(value):
     return str(value).replace("|", "\\|").replace("\n", " ")
 
 
-def write_tables(result, groups, out):
+def summary_table(summary):
     table = []
-    for row in result["summary"]:
-        flat = {k: row[k] for k in ("model_key", "mode", "domain", "behavior", "planned_groups", "complete_groups", "excluded_groups", "inconsistent_complete_groups", "planned_responses", "scored_responses")}
+    for row in summary:
+        flat = {k: row[k] for k in ("model_key", "mode", "domain", "behavior", "planned_groups", "complete_groups", "excluded_groups",
+                                    "invalidated_paraphrase_groups", "inconsistent_complete_groups", "planned_responses", "scored_responses")}
         for field in ("gir_percent", "scorable_accuracy_percent", "all_planned_accuracy_percent", "all_four_correct_percent"):
             flat[field] = row[field]["estimate"]
             flat[field + "_ci_low"], flat[field + "_ci_high"] = row[field]["ci95"]
         flat["gir_missingness_lower"], flat["gir_missingness_upper"] = row["gir_missingness_bounds_percent"]
         table.append(flat)
+    return table
+
+
+def write_tables(result, groups, out):
+    table = summary_table(result["summary"])
     write_rows(out / "summary.csv", table, list(table[0]))
+    if result["secondary_pooled"] and result["secondary_pooled"]["summary"]:
+        pooled = [{"analysis_tier": "secondary_pooled", **row} for row in summary_table(result["secondary_pooled"]["summary"])]
+        write_rows(out / "secondary_pooled_summary.csv", pooled, list(pooled[0]))
     group_table = [{**g, "decisions": canonical(g["decisions"]), "exclusion_reasons": ";".join(g["exclusion_reasons"]),
+                    "invalidated_variants": ";".join(g["invalidated_variants"]),
                     "label_sources": canonical(g["label_sources"])} for g in groups]
     write_rows(out / "groups.csv", group_table, list(group_table[0]))
     agreements, recalls, matrices = [], [], []
@@ -120,20 +132,41 @@ def write_tables(result, groups, out):
     write_rows(out / "agreement_confusion.csv", matrices, ("comparison", "task", "reference", "prediction", "n"))
 
 
-def write_markdown(result, out):
-    lines = [f"# {markdown(result['study_label'])}", "", f"**{result['status']}**", "",
-             "## Consistency and correctness", "", "Percentages with question-group bootstrap 95% CIs. NA means undefined, not zero.", "",
-             "| Model (mode) | Domain / behavior | Complete/planned | GIR | Scorable accuracy | All-planned accuracy |",
+def summary_lines(summary):
+    lines = ["| Model (mode) | Domain / behavior | Complete/planned | GIR | Scorable accuracy | All-planned accuracy |",
              "|---|---|---:|---:|---:|---:|"]
-    for row in result["summary"]:
+    for row in summary:
         lines.append(f"| {markdown(row['model_key'])} ({row['mode'] or 'unknown'}) | {row['domain']} / {row['behavior']} | "
                      f"{row['complete_groups']}/{row['planned_groups']} | {interval(row['gir_percent'])} | "
                      f"{interval(row['scorable_accuracy_percent'])} | {interval(row['all_planned_accuracy_percent'])} |")
+    return lines
+
+
+def write_markdown(result, out):
+    lines = [f"# {markdown(result['study_label'])}", "", f"**{result['status']}**", "",
+             "## Consistency and correctness (primary)", "",
+             "Percentages with question-group bootstrap 95% CIs. NA means undefined, not zero. Correction positives",
+             "(`correction_positive`) and controls (`overcorrection_control`) are always reported separately.", "",
+             *summary_lines(result["summary"])]
     lines += ["", "GIR uses complete original/p1/p2/p3 groups. Originals-only runs cannot establish four-wording consistency.",
               "Scorable accuracy excludes unknown decisions; all-planned accuracy counts missing/unusable slots as unsuccessful.",
               "The two accuracy measures and GIR have different denominators. Missingness sensitivity bounds in metrics.json",
-              "are not confidence intervals. They retain observed disagreement even within incomplete groups.", "",
-              "## Agreement and mapper validation", "",
+              "are not confidence intervals. They retain observed disagreement even within incomplete groups.", ""]
+    if result["invalidated_paraphrases"]:
+        lines += ["## Invalidated paraphrases", "",
+                  "Paraphrases found invalid after collection. Their groups are excluded from primary GIR for every model",
+                  f"(reason `{INVALIDATED}`), even when all four decisions exist. The collected records are kept, and no",
+                  "replacement paraphrase was substituted after results were seen.", "",
+                  "| Group | Variant | Reason | Invalidated by |", "|---|---|---|---|"]
+        lines += [f"| {markdown(r['group_id'])} | {r['variant_id']} | {markdown(r['reason'])} | {markdown(r['invalidated_by'])} |"
+                  for r in result["invalidated_paraphrases"]]
+        lines.append("")
+    if result["secondary_pooled"]:
+        lines += ["## Secondary: pooled correction GIR (positives + controls)", "",
+                  "Requested with `control_gir=pooled`. **Secondary result only**: it does not replace the separate primary",
+                  "positive and control results above. Same complete-group and invalidation rules.", "",
+                  *summary_lines(result["secondary_pooled"]["summary"]), ""]
+    lines += ["## Agreement and mapper validation", "",
               "Human-human kappa uses raw independent decisions before adjudication. Mapper reference is human consensus or",
               "third-person adjudication, never source clinical gold. Missing/unscorable mapper predictions count as misses",
               "for scorable human classes. An absent reference class has NA recall, not 100%.", "",
@@ -148,7 +181,7 @@ def write_markdown(result, out):
     lines += [f"- {markdown(issue)}" for issue in result["diagnostics"]] or ["- No mechanical input/reliability issues found; scientific approval remains a team responsibility."]
     lines += ["", "## Methods and limits", "",
               f"- Run: `{markdown(result['run_id'])}`; analysis version: `{ANALYSIS_VERSION}`.",
-              f"- Policy: `{result['policy']['policy_version']}`; control GIR: `{result['policy']['control_gir']}`; pending audits: `{result['policy']['pending_audit']}`.",
+              f"- Policy: `{result['policy']['policy_version']}`; control GIR: `{result['policy']['control_gir']}` (positives and controls are always separate in primary results; `pooled` adds a secondary pooled result); pending audits: `{result['policy']['pending_audit']}`.",
               f"- Group-bootstrap replicates: {result['policy']['bootstrap_samples']}; seed: {result['policy']['seed']}.",
               f"- Agreement adapter: {markdown(result['agreement']['adapter'])}.",
               "- Entire questions, with all variants, are resampled. Paired model deltas use the jointly complete intersection and matched-question resampling.",
@@ -158,7 +191,8 @@ def write_markdown(result, out):
               "- Single-question/constant samples can have zero-width intervals. All-one-class kappa can be undefined. Small pilots are integration checks.",
               "- Token-cap flags are retained; no long answer is silently dropped. Final denominator/control/token policies need the team's agreement.",
               "- Outputs, including provenance and response IDs, are local/private by default. Review selected aggregates before publication.", "",
-              "## Artifacts", "", "- summary.csv, groups.csv, metrics.json and provenance.json",
+              "## Artifacts", "", "- summary.csv (primary), groups.csv, metrics.json and provenance.json",
+              *(["- secondary_pooled_summary.csv (secondary pooled correction GIR)"] if result["secondary_pooled"] else []),
               "- agreement.csv, class_recall.csv, agreement_confusion.csv",
               "- excluded_groups.jsonl, error_analysis.jsonl and mapper_errors.jsonl"]
     if result["plots_requested"]:
@@ -222,7 +256,7 @@ def plot_figures(result, out):
 
 def analyze(annotations, questions, out, models=None, scoring_work=None, policy_file=None, plots=False,
             study_label="Healthcare consistency analysis — exploratory", bootstrap_samples=None, seed=None,
-            control_gir=None, pending_audit=None):
+            control_gir=None, pending_audit=None, invalidations=None):
     policy = policy_from(policy_file, {"bootstrap_samples": bootstrap_samples, "seed": seed,
                                      "control_gir": control_gir, "pending_audit": pending_audit})
     require(not Path(out).exists(), "Output destination exists; choose a new analysis directory")
@@ -231,11 +265,14 @@ def analyze(annotations, questions, out, models=None, scoring_work=None, policy_
             import matplotlib  # noqa: F401
         except ImportError:
             raise ValueError("Plots require: python3 -m pip install -r requirements-analysis.txt") from None
-    data = load_data(annotations, questions, models, scoring_work)
+    data = load_data(annotations, questions, models, scoring_work, invalidations)
     if policy_file:
         data["files"].append(Path(policy_file))
     groups = make_groups(data, policy)
     summary, paired = summarize(groups, policy)
+    secondary = pooled_secondary(groups, policy) if policy["control_gir"] == "pooled" else None
+    invalidated = sorted(data["invalidations"].values(), key=lambda r: (r["group_id"], r["variant_id"]))
+    invalidated_groups = sum(bool(g["invalidated_variants"]) for g in groups)
     agreement = analyze_agreement(data, policy)
     extras = supplementary(data)
     diagnostics = list(agreement["issues"])
@@ -256,6 +293,11 @@ def analyze(annotations, questions, out, models=None, scoring_work=None, policy_
         diagnostics.append(f"{pending} decisions have pending human audits; policy={policy['pending_audit']}")
     if any(d.get("target_context") == "question_only_calibration" for d in data["by_id"].values() if d["task"] == "correction"):
         diagnostics.append("Question-only target inference still needs clinical target-alignment review")
+    if invalidated:
+        diagnostics.append(f"{len(invalidated)} paraphrases invalidated after collection; {invalidated_groups} model-groups "
+                           f"excluded from primary GIR ({INVALIDATED}); original records retained, no substitutes")
+    if secondary:
+        diagnostics.append("Pooled correction GIR requested: reported as a SECONDARY result; primary positives/controls stay separate")
     cap_count = sum(d["over_visible_cap"] is True for d in data["by_id"].values())
     if cap_count:
         diagnostics.append(f"{cap_count} over-visible-cap responses retained; agree token-cap policy")
@@ -264,13 +306,15 @@ def analyze(annotations, questions, out, models=None, scoring_work=None, policy_
     result = {"analysis_version": ANALYSIS_VERSION, "study_label": study_label,
               "status": "EXPLORATORY / NOT VALIDATED STUDY FINDINGS", "run_id": data["run_id"],
               "guide_version": data["guide_version"], "policy": policy, "plots_requested": plots,
-              "summary": summary, "paired_model_comparisons": paired, "agreement": agreement,
+              "summary": summary, "paired_model_comparisons": paired, "secondary_pooled": secondary,
+              "invalidated_paraphrases": invalidated, "agreement": agreement,
               "supplementary": extras, "diagnostics": sorted(set(diagnostics)),
               "coverage": {"planned_responses": len(groups) * 4, "decision_records": len(data["by_id"]),
                            "slot_definition": "Four wording slots per declared model/question; originals-only runs intentionally fill one",
                            "scoring_export_planned_responses": data["scoring_summary"].get("planned_responses") if data["scoring_summary"] else None,
                            "missing_variant_records": absent_slots, "explicit_missing_response_records": explicit_missing,
-                           "planned_model_groups": len(groups), "complete_model_groups": sum(g["complete"] for g in groups)},
+                           "planned_model_groups": len(groups), "complete_model_groups": sum(g["complete"] for g in groups),
+                           "invalidated_paraphrase_model_groups": invalidated_groups},
               "scientific_approval_note": "Policy defaults are proposed operational choices; this tool does not certify clinical validity or team approval."}
     output = create_private_directory(out)
     write_json(output / "metrics.json", result)
@@ -284,4 +328,5 @@ def analyze(annotations, questions, out, models=None, scoring_work=None, policy_
     if plots:
         plot_figures(result, output)
     return {"output": str(output.resolve()), "status": result["status"], "coverage": result["coverage"],
-            "reporting_strata": len(summary), "review_expansion_required": agreement["review_expansion_required"], "diagnostics": result["diagnostics"]}
+            "reporting_strata": len(summary), "secondary_pooled_strata": len(secondary["summary"]) if secondary else 0,
+            "review_expansion_required": agreement["review_expansion_required"], "diagnostics": result["diagnostics"]}

@@ -17,12 +17,15 @@ def main(argv=None):
         p.add_argument("--questions", required=True, help="Matching source questions JSONL with reference labels")
         p.add_argument("--models", nargs="+", help="Explicit expected model keys; optional when --scoring-work supplies them")
         p.add_argument("--scoring-work", help="Optional read-only PR #21 workspace for exact raw observation agreement")
+        p.add_argument("--invalidations", help="Explicit post-collection paraphrase invalidations (JSONL/CSV): run_id, group_id, "
+                       "variant_id, reason, invalidated_by. Affected groups are excluded from primary GIR")
         if name == "run":
             p.add_argument("--out", required=True)
             p.add_argument("--policy-file")
             p.add_argument("--bootstrap-samples", type=int)
             p.add_argument("--seed", type=int)
-            p.add_argument("--control-gir", choices=("separate", "pooled"))
+            p.add_argument("--control-gir", choices=("separate", "pooled"),
+                           help="pooled ADDS a secondary pooled correction GIR; primary positives/controls stay separate")
             p.add_argument("--pending-audit", choices=("exclude", "mapper_exploratory"))
             p.add_argument("--plots", action="store_true", help="Requires optional requirements-analysis.txt")
             p.add_argument("--study-label", default="Healthcare consistency analysis — exploratory")
@@ -40,7 +43,8 @@ def main(argv=None):
             data = load_data(**args)
             result = {"run_id": data["run_id"], "question_groups": len(data["questions"]),
                       "expected_models": data["models"], "decision_records": len(data["by_id"]),
-                      "four_variant_slots": len(data["models"]) * len(data["questions"]) * 4}
+                      "four_variant_slots": len(data["models"]) * len(data["questions"]) * 4,
+                      "invalidated_paraphrases": len(data["invalidations"])}
         else:
             from .demo import demo
             result = demo(**args)

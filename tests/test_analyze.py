@@ -15,7 +15,7 @@ from src.analyze.__main__ import main
 from src.analyze.agreement import analyze_agreement, categorical_agreement
 from src.analyze.bootstrap import group_bootstrap, percentile, stable_seed
 from src.analyze.demo import MODELS, make_fixture
-from src.analyze.gir import make_groups, summarize
+from src.analyze.gir import make_groups, pooled_secondary, summarize
 from src.analyze.inputs import DEFAULT_POLICY, load_data, policy_from, read_json, read_rows
 from src.analyze.report import analyze
 
@@ -250,10 +250,23 @@ class GIRTests(Fixture):
         separate, _ = summarize(self.groups(), self.policy)
         self.assertIn("overcorrection_control", {r["behavior"] for r in separate})
         policy = {**self.policy, "control_gir": "pooled"}
-        pooled, _ = summarize(self.groups(policy), policy)
-        row = next(r for r in pooled if r["model_key"] == "gpt" and r["domain"] == "oncology")
+        secondary = pooled_secondary(self.groups(policy), policy)
+        self.assertEqual(secondary["analysis_tier"], "secondary")
+        row = next(r for r in secondary["summary"] if r["model_key"] == "gpt" and r["domain"] == "oncology")
         self.assertEqual(row["behavior"], "challenge_pooled")
         self.assertAlmostEqual(row["gir_percent"]["estimate"], 100 / 3)
+        self.assertNotIn("escalation", {r["behavior"] for r in secondary["summary"]})
+
+    # Guide v1.2 §9.1 rule 1: pooling is secondary; it never replaces separate primary results.
+    def test_pooled_request_preserves_separate_primary_results(self):
+        separate, separate_paired = summarize(self.groups(), self.policy)
+        policy = {**self.policy, "control_gir": "pooled"}
+        primary, primary_paired = summarize(self.groups(policy), policy)
+        self.assertEqual(primary, separate)
+        self.assertEqual(primary_paired, separate_paired)
+        self.assertNotIn("challenge_pooled", {r["behavior"] for r in primary})
+        row = next(r for r in primary if r["model_key"] == "gpt" and r["domain"] == "oncology" and r["behavior"] == "correction_positive")
+        self.assertEqual(row["gir_percent"]["estimate"], 50)
 
     def test_originals_only_has_no_estimable_gir(self):
         annotations, questions = make_fixture(self.root / "originals", originals_only=True)
@@ -290,6 +303,112 @@ class GIRTests(Fixture):
         self.assertEqual(row["gir_delta_percentage_points"]["n_groups"], 2)
         triage = next(r for r in paired if r["left"] == "gpt" and r["right"] == "claude" and r["domain"] == "acute_triage") if any(r["left"] == "gpt" and r["right"] == "claude" for r in paired) else next(r for r in paired if r["left"] == "claude" and r["right"] == "gpt" and r["domain"] == "acute_triage")
         self.assertEqual(triage["gir_delta_percentage_points"]["n_groups"], 2)
+
+
+class InvalidatedParaphraseTests(Fixture):
+    """Guide v1.2 §9.1 rule 5: post-collection invalidations exclude the group from primary GIR."""
+    RUN = "run-synthetic-analysis"
+
+    def invalidate(self, *rows, name="invalidations.jsonl"):
+        path = self.root / name
+        base = {"run_id": self.RUN, "reason": "p2 adds a new symptom (§6)", "invalidated_by": "paraphrase-lead"}
+        replace_rows(path, [{**base, **row} for row in rows])
+        return path
+
+    def groups(self, path):
+        return make_groups(load_data(self.annotations, self.questions, list(MODELS), invalidations=path), self.policy)
+
+    def gpt_oncology(self, path):
+        summary, _ = summarize(self.groups(path), self.policy)
+        return next(r for r in summary if r["model_key"] == "gpt" and r["domain"] == "oncology" and r["behavior"] == "correction_positive")
+
+    def test_group_excluded_even_with_four_decisions_and_original_records_kept(self):
+        path = self.invalidate({"group_id": "onc-002", "variant_id": "p2"})
+        group = next(g for g in self.groups(path) if g["model_key"] == "gpt" and g["group_id"] == "onc-002")
+        self.assertEqual(group["decisions"], {"original": "yes", "p1": "yes", "p2": "yes", "p3": "yes"})
+        self.assertFalse(group["complete"])
+        self.assertEqual(group["invalidated_variants"], ["p2"])
+        self.assertEqual(group["exclusion_reasons"], ["invalidated_paraphrase"])
+        self.assertEqual(group["n_scored"], 3)
+        row = self.gpt_oncology(path)
+        self.assertEqual((row["complete_groups"], row["gir_percent"]["estimate"]), (1, 100))
+        self.assertEqual(row["excluded_reason_counts"], {"invalidated_paraphrase": 1})
+        self.assertEqual(row["invalidated_paraphrase_groups"], 1)
+
+    def test_applies_to_every_model(self):
+        groups = [g for g in self.groups(self.invalidate({"group_id": "onc-002", "variant_id": "p2"})) if g["group_id"] == "onc-002"]
+        self.assertEqual(len(groups), len(MODELS))
+        self.assertTrue(all(not g["complete"] and "invalidated_paraphrase" in g["exclusion_reasons"] for g in groups))
+
+    def test_reason_is_distinct_from_missing_variant(self):
+        # claude tri-002 p2 has no record; invalidating it reports the invalidation, not a missing variant.
+        path = self.invalidate({"group_id": "tri-002", "variant_id": "p2"})
+        group = next(g for g in self.groups(path) if g["model_key"] == "claude" and g["group_id"] == "tri-002")
+        self.assertEqual(group["exclusion_reasons"], ["invalidated_paraphrase"])
+
+    def test_invalidated_variant_disagreement_is_not_counted(self):
+        # gpt onc-001 only disagrees on p3. Invalidating p3 leaves no observed disagreement, and the group
+        # still counts as incomplete in the upper missingness bound.
+        row = self.gpt_oncology(self.invalidate({"group_id": "onc-001", "variant_id": "p3"}))
+        self.assertEqual(row["gir_percent"]["estimate"], 0)
+        self.assertEqual(row["gir_missingness_bounds_percent"], [0, 50])
+
+    def test_no_invalidations_leaves_results_unchanged(self):
+        baseline, _ = summarize(make_groups(self.data(), self.policy), self.policy)
+        empty = self.root / "none.jsonl"
+        empty.write_text("", encoding="utf-8")
+        self.assertEqual(summarize(self.groups(empty), self.policy)[0], baseline)
+
+    def test_invalid_invalidation_files_rejected(self):
+        cases = [({"group_id": "onc-002", "variant_id": "p2", "run_id": "run-with-new-paraphrases"}, "not the analyzed run"),
+                 ({"group_id": "onc-002", "variant_id": "original"}, "only paraphrases"),
+                 ({"group_id": "onc-999", "variant_id": "p1"}, "unknown question group"),
+                 ({"group_id": "onc-002", "variant_id": "p2", "reason": " "}, "reason"),
+                 ({"group_id": "onc-002", "variant_id": "p2", "invalidated_by": ""}, "invalidated_by"),
+                 ({"group_id": "onc-002", "variant_id": "p2", "replacement_text": "new wording"}, "Unknown paraphrase-invalidation fields")]
+        for n, (row, message) in enumerate(cases):
+            with self.subTest(message):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.groups(self.invalidate(row, name=f"bad{n}.jsonl"))
+        with self.assertRaisesRegex(ValueError, "Duplicate invalidation"):
+            self.groups(self.invalidate({"group_id": "onc-002", "variant_id": "p2"}, {"group_id": "onc-002", "variant_id": "p2"}, name="dup.jsonl"))
+
+    def test_must_refer_to_a_collected_paraphrase(self):
+        annotations, questions = make_fixture(self.root / "originals", originals_only=True)
+        with self.assertRaisesRegex(ValueError, "not collected in this run"):
+            load_data(annotations, questions, list(MODELS), invalidations=self.invalidate({"group_id": "onc-002", "variant_id": "p2"}))
+
+    def test_replacement_records_cannot_be_substituted(self):
+        def substitute(rows):
+            original = next(r for r in rows if (r["model_key"], r["group_id"], r["variant_id"]) == ("gpt", "onc-002", "p2"))
+            rows.append({**original, "response_id": "synthetic:gpt:onc-002:p2-replacement"})
+        self.decide(substitute)
+        with self.assertRaisesRegex(ValueError, "Duplicate model/group/variant"):
+            self.groups(self.invalidate({"group_id": "onc-002", "variant_id": "p2"}))
+
+    def test_report_lists_invalidations_and_excluded_groups(self):
+        path = self.invalidate({"group_id": "onc-002", "variant_id": "p2"})
+        result = self.report(invalidations=path)
+        out = self.root / "analysis"
+        metrics = read_json(out / "metrics.json")
+        self.assertEqual([(r["group_id"], r["variant_id"]) for r in metrics["invalidated_paraphrases"]], [("onc-002", "p2")])
+        self.assertEqual(metrics["coverage"]["invalidated_paraphrase_model_groups"], len(MODELS))
+        self.assertTrue(any("invalidated after collection" in d for d in result["diagnostics"]))
+        excluded = [g for g in read_rows(out / "excluded_groups.jsonl") if g["group_id"] == "onc-002"]
+        self.assertEqual(len(excluded), len(MODELS))
+        self.assertTrue(all(g["exclusion_reasons"] == ["invalidated_paraphrase"] for g in excluded))
+        errors = [r for r in read_rows(out / "error_analysis.jsonl") if r["invalidated_paraphrase"]]
+        self.assertEqual({(r["group_id"], r["variant_id"]) for r in errors}, {("onc-002", "p2")})
+        self.assertIn("## Invalidated paraphrases", (out / "report.md").read_text())
+        self.assertIn(str(path.resolve()), {p["path"] for p in read_json(out / "provenance.json")["inputs"]})
+
+    def test_cli_accepts_invalidations(self):
+        path = self.invalidate({"group_id": "onc-002", "variant_id": "p2"})
+        with contextlib.redirect_stdout(io.StringIO()) as stdout:
+            code = main(["validate", "--annotations", str(self.annotations), "--questions", str(self.questions),
+                         "--models", *MODELS, "--invalidations", str(path)])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(stdout.getvalue())["invalidated_paraphrases"], 1)
 
 
 class AgreementIntegrationTests(Fixture):
@@ -386,6 +505,24 @@ class ReportingTests(Fixture):
                     "class_recall.csv", "agreement_confusion.csv", "provenance.json", ".gitignore"}
         self.assertEqual({p.name for p in root.iterdir()}, expected)
         self.assertEqual((root / ".gitignore").read_text(), "*\n")
+
+    def test_pooled_report_keeps_separate_primary_and_labels_secondary(self):
+        self.report(control_gir="pooled")
+        root = self.root / "analysis"
+        metrics = read_json(root / "metrics.json")
+        primary = {r["behavior"] for r in metrics["summary"]}
+        self.assertTrue({"correction_positive", "overcorrection_control", "escalation"} <= primary)
+        self.assertNotIn("challenge_pooled", primary)
+        self.assertEqual(metrics["secondary_pooled"]["analysis_tier"], "secondary")
+        self.assertEqual({r["behavior"] for r in metrics["secondary_pooled"]["summary"]}, {"challenge_pooled"})
+        self.assertNotIn("challenge_pooled", (root / "summary.csv").read_text())
+        self.assertTrue(all(r["analysis_tier"] == "secondary_pooled" for r in read_rows(root / "secondary_pooled_summary.csv")))
+        report = (root / "report.md").read_text()
+        self.assertLess(report.index("(primary)"), report.index("## Secondary: pooled"))
+
+    def test_default_report_has_no_secondary_pooled_result(self):
+        self.report()
+        self.assertIsNone(read_json(self.root / "analysis/metrics.json")["secondary_pooled"])
 
     def test_inputs_unchanged_after_analysis(self):
         files = {p: p.read_bytes() for p in (self.root / "inputs").rglob("*") if p.is_file()}

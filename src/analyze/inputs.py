@@ -6,6 +6,9 @@ import json
 from pathlib import Path
 
 VARIANTS = ("original", "p1", "p2", "p3")
+PARAPHRASES = VARIANTS[1:]
+INVALIDATION_REQUIRED = ("run_id", "group_id", "variant_id", "reason", "invalidated_by")
+INVALIDATION_OPTIONAL = ("invalidated_at", "notes")
 CARE_LABELS = ("0A", "0B", "1A", "1B")
 DOMAINS = {"oncology": "correction", "public_health": "correction", "acute_triage": "escalation"}
 STATUSES = {"scored", "unscorable", "unmapped", "model_error", "empty_response", "missing_response"}
@@ -99,7 +102,38 @@ def load_workspace(path):
     return state, [manifest_file, state_file]
 
 
-def load_data(annotations, questions, models=None, scoring_work=None):
+def load_invalidations(path, run_id, questions, decisions):
+    """Explicit post-collection paraphrase invalidations (guide v1.2 §9.1 rule 5).
+
+    Each row names one collected paraphrase slot of THIS run. It excludes the group from primary GIR for
+    every model. Decision records are kept, and no replacement paraphrase is ever accepted in their place:
+    analysis reads a single run, so later responses to a new paraphrase cannot be mixed in.
+    """
+    if not path:
+        return {}
+    rows = read_rows(path)
+    collected = {(gid, vid) for _, gid, vid in decisions}
+    result = {}
+    for row in rows:
+        unknown = set(row) - set(INVALIDATION_REQUIRED) - set(INVALIDATION_OPTIONAL)
+        require(not unknown, f"Unknown paraphrase-invalidation fields: {sorted(unknown)}")
+        for field in INVALIDATION_REQUIRED:
+            text(row.get(field), f"invalidation {field}")
+        gid, vid = row["group_id"], row["variant_id"]
+        require(row["run_id"] == run_id,
+                f"{gid}/{vid}: invalidation names run {row['run_id']!r}, not the analyzed run; invalidations "
+                "apply to the collected run and are never carried to a rerun with substituted paraphrases")
+        require(gid in questions, f"{gid}: invalidation for an unknown question group")
+        require(vid in PARAPHRASES, f"{gid}/{vid}: only paraphrases p1/p2/p3 can be invalidated; an unusable "
+                "original is an eligibility exclusion, not a paraphrase invalidation")
+        require((gid, vid) in collected, f"{gid}/{vid}: not collected in this run; post-collection invalidations "
+                "must refer to collected paraphrases (fix paraphrases before collection, guide §6)")
+        require((gid, vid) not in result, f"Duplicate invalidation for {gid}/{vid}")
+        result[gid, vid] = {k: row[k] for k in (*INVALIDATION_REQUIRED, *INVALIDATION_OPTIONAL) if k in row}
+    return result
+
+
+def load_data(annotations, questions, models=None, scoring_work=None, invalidations=None):
     root = Path(annotations)
     decisions_file = root / "decisions.jsonl"
     raw_decisions = read_rows(decisions_file)
@@ -169,6 +203,9 @@ def load_data(annotations, questions, models=None, scoring_work=None):
         for model in models:
             versions = {m["model_version"] for m in workspace["metadata"] if m["model_key"] == model}
             require(len(versions) <= 1, f"{model}: returned model version changed within this run; analyze separate frozen runs")
+    invalidated = load_invalidations(invalidations, next(iter(run_ids)), qs, rows)
+    if invalidations:
+        files.append(Path(invalidations))
     export_summary = None
     summary_file = root / "scoring_summary.json"
     if summary_file.exists():
@@ -178,7 +215,7 @@ def load_data(annotations, questions, models=None, scoring_work=None):
     return {"annotations": root, "questions": qs, "decisions": rows, "by_id": row_by_id,
             "models": list(models), "modes": {m: declared.get(m) for m in models}, "run_id": next(iter(run_ids)),
             "guide_version": next(iter(guides)), "workspace": workspace, "work_path": Path(scoring_work) if scoring_work else None,
-            "files": files, "scoring_summary": export_summary}
+            "files": files, "scoring_summary": export_summary, "invalidations": invalidated}
 
 
 def load_annotations(data, name):

@@ -107,7 +107,8 @@ python3 -m src.analyze run \
   --out outputs/analysis/YOUR_RUN/analysis-v1
 ```
 
-Add `--plots` after installing the optional dependency. For production groups use the corresponding
+Add `--invalidations FILE` when paraphrases were invalidated after collection (see Statistical
+definitions). Add `--plots` after installing the optional dependency. For production groups use the corresponding
 full source questions. No runner source/config or private response files need changing.
 
 ## Agreement: export-only or exact raw observations
@@ -149,9 +150,34 @@ variant names define the expected grid, even if an entire model or a whole varia
 group has four usable decisions. More than one distinct decision means inconsistency. `0A` is nominal
 clarification, not a numeric urgency rung. Four equally wrong answers are consistent but inaccurate.
 
-**Controls:** default `control_gir=separate` reports positive correction and control overcorrection
-stability separately. An explicitly selected `pooled` policy labels the combined metric `challenge_pooled`.
+**Controls (guide v1.2 §9.1 rule 1):** primary results ALWAYS report positive correction
+(`correction_positive`) and control overcorrection (`overcorrection_control`) stability separately.
+`control_gir=pooled` does not change them. It ADDS a secondary pooled correction result
+(`challenge_pooled`, positives + controls) under `secondary_pooled` in `metrics.json`, in
+`secondary_pooled_summary.csv` (every row tagged `analysis_tier=secondary_pooled`) and in a separate
+"Secondary" report section after the primary table. Pooled numbers never appear in `summary.csv`.
 Do not silently pool controls or redefine a medical source label.
+
+**Invalidated paraphrases (guide v1.2 §9.1 rule 5):** a paraphrase found invalid after collection is
+declared explicitly with `--invalidations FILE` (JSONL or CSV, one row per paraphrase):
+
+```json
+{"run_id": "run-…", "group_id": "onc-012", "variant_id": "p2", "reason": "adds a new symptom (§6)", "invalidated_by": "reviewer-id"}
+```
+
+Optional fields: `invalidated_at`, `notes`. Any other field is rejected. The invalidation applies to that
+group for EVERY model. The group is excluded from primary GIR even when all four decisions are present,
+and is reported with its own exclusion reason, `invalidated_paraphrase` (not `missing_variant_record`).
+The invalidated paraphrase's decision does not count toward observed disagreement or scorable accuracy;
+all-planned accuracy counts its slot as not correct, and the group is incomplete for the upper
+missingness bound. The collected decision records are kept unchanged in `group_metrics.jsonl`,
+`excluded_groups.jsonl` and `error_analysis.jsonl` (flag `invalidated_paraphrase`), and the report lists
+every invalidation. New paraphrases are never substituted after results are seen: each invalidation must
+name the analyzed `run_id` and a paraphrase (`p1`–`p3`) collected in it, analysis reads a single run, and
+a second record for the same model/group/variant is rejected. An unusable original is an eligibility
+exclusion, not a paraphrase invalidation. Invalid paraphrases found before collection are fixed before the
+run (guide §6) and are not entered here. Scorer agreement (kappa/recall) still uses these responses,
+because it measures labeling of what a response says, not paraphrase validity.
 
 **Missingness:** incomplete groups are excluded from primary GIR and enumerated with reasons. Bounds
 over ALL planned groups retain incomplete observed disagreements: lower = already observed disagreement;
@@ -199,7 +225,9 @@ create or overwrite human reviews. Pilot samples with few classes cannot establi
 
 Outputs include `metrics.json`, `summary.csv`, `groups.csv`, `group_metrics.jsonl`, `report.md`,
 `agreement.csv`, `class_recall.csv`, `agreement_confusion.csv`, `excluded_groups.jsonl`,
-`error_analysis.jsonl`, `mapper_errors.jsonl`, `provenance.json`, and optional PNG/SVG figures.
+`error_analysis.jsonl`, `mapper_errors.jsonl`, `provenance.json`, `secondary_pooled_summary.csv` (only
+with `control_gir=pooled`) and optional PNG/SVG figures. The invalidations file, when given, is checksummed
+in `provenance.json`.
 Each new output directory has a generated self-ignoring `.gitignore` containing `*`. This keeps results
 private without editing the shared root ignore file. Synthetic demo roots are likewise self-ignored.
 
@@ -213,7 +241,9 @@ clinical correctness, actual reviewer independence or medical safety.
 
 The core tests check hand-calculated kappa/recall, known GIR values, consistency versus correctness,
 group bootstrap, missing models/variants, pending review, audit thresholds, policy validation, immutable
-inputs, private outputs and CLI errors. They need neither APIs, datasets, Matplotlib nor `src.score`.
+inputs, private outputs and CLI errors. They also check that pooled requests keep the separate primary
+results unchanged, and that invalidated paraphrases exclude complete groups with their own reason, keep
+the original records, and reject other runs, originals, uncollected slots and substituted records. They need neither APIs, datasets, Matplotlib nor `src.score`.
 
 Optional tests automatically run when scoring PR #21 is present. They exercise its real synthetic
 runner/scorer workflow, originals-only/four-wording exports, raw workspace adapter, alias drift,
