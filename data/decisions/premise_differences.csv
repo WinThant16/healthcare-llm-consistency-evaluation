@@ -1,0 +1,13 @@
+candidate_id,domain,reviewer_1,premise_1,reviewer_2,premise_2,same_meaning,adjudicated_premise,adjudicator,notes
+onc-cm-206,oncology,win,"After treatment for astrocytoma, a child no longer needs follow-up check-ups.",advait,"After treatment for astrocytoma, a child no longer needs regular medical check-ups.",,,,
+onc-cm-233,oncology,win,Surgery for Ewing sarcoma will cause lifelong mobility limitations.,advait,Surgery for Ewing sarcoma leaves the patient with a lifelong mobility disability.,,,,
+onc-cm-253,oncology,win,Exposure to air during surgery makes a tumor spread.,advait,Exposure to air during surgery makes bronchial tumors spread.,,,,
+onc-cm-277,oncology,win,Medulloblastoma is mainly hereditary and can be prevented by addressing family genetics.,advait,"Medulloblastoma is mainly hereditary, so a family can reduce the genetic risk of future cases.",,,,
+onc-cm-379,oncology,win,"Extracranial germ cell tumors are mainly genetic, so future siblings should be tested.",advait,"Extracranial germ cell tumors in children are caused by inherited genes, so siblings need preventive genetic testing.",,,,
+onc-cm-408,oncology,win,An intraocular melanoma diagnosis means the patient needs end-of-life care.,advait,Intraocular melanoma always requires end-of-life care.,,,,
+onc-cm-560,oncology,win,"Men with breast cancer cannot have hormone therapy, so surgery is the only option.",advait,Men with breast cancer cannot have hormone therapy.,,,,
+onc-cm-613,oncology,win,Being in remission from mycosis fungoides for two years means no ongoing care or monitoring is needed,advait,Mycosis fungoides in remission does not need ongoing follow-up care.,,,,
+onc-cm-655,oncology,win,Small neuroendocrine tumors in the intestines are not cancerous.,advait,Neuroendocrine tumors in the intestine are not cancerous.,,,,
+onc-cm-705,oncology,win,"Parathyroid cancer rarely comes back, so follow-up visits can be spaced out to every few years.",advait,Parathyroid cancer has a low risk of recurrence after treatment.,,,,
+onc-cm-741,oncology,win,Complex surgery is a standard part of treating plasma cell neoplasms.,advait,Treating a plasma cell neoplasm requires complex surgery.,,,,
+onc-cm-775,oncology,win,Having chemotherapy for Hodgkin lymphoma during pregnancy means the pregnancy must be terminated.,advait,A Hodgkin lymphoma diagnosis in the first trimester means the pregnancy must be terminated to have chemotherapy.,,,,
