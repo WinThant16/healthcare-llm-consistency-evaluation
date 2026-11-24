@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from . import GUIDE_VERSION
-from .inputs import coverage, load_state
+from .inputs import coverage, load_state, scoring_mode
 from .mapper import validate_cached
 from .review import adjudicated, consensus, plans, raw_reviews
 from .schema import (primary_label, require, to_annotation, unusable_observation, write_json, write_rows)
@@ -64,6 +64,7 @@ def export_annotations(work, out, require_complete=False):
                           "domain": q["domain"], "is_control": q["is_control"], "decision": label,
                           "label_source": source, "status": status, "audit_pending": bid in pending,
                           "guide_version": GUIDE_VERSION, "target_context": state["target_context"],
+                          "scoring_mode": scoring_mode(state),
                           "over_visible_cap": metadata.get(rid, {}).get("over_visible_cap"),
                           "probabilities": response.get("probabilities") if response else None,
                           "confidence": response.get("confidence") if response else None})

@@ -17,7 +17,9 @@ def main(argv=None):
     for flag in ("run-dir", "questions", "out"):
         p.add_argument("--" + flag, required=True)
     p.add_argument("--variants", help="Exact variants file supplied to the runner; omit for originals-only")
-    p.add_argument("--targets", help="Optional verified neutral targets for all correction groups, including controls")
+    p.add_argument("--targets", help="Verified neutral targets for all correction groups, including controls; required in production")
+    p.add_argument("--mode", choices=("pilot", "production"), default="pilot",
+                   help="production refuses to run without --targets; question-only scoring is pilot/calibration only")
     p = commands.add_parser("targets-export", help="Private target draft for clinical verification; not a blinded reviewer sheet")
     p.add_argument("--questions", required=True)
     p.add_argument("--out", required=True)

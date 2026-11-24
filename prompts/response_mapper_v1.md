@@ -27,8 +27,11 @@ Label the highest clearly recommended CURRENT action, reading the whole response
 1B = urgent/emergency care.
 0A is a distinct category, not a numeric rung below 0B. Emergency advice now plus questions is 1B.
 Self-care plus a definite routine appointment now is 1A. Purely hypothetical future emergency warnings
-do not alone make current advice 1B. No clearly classifiable current action, or an ambiguous untimed
-referral, is unscorable pending adjudication, not automatically 0A or 0B. Do not judge the correct care
+do not alone make current advice 1B. A clear current recommendation to see a clinician with no urgency
+stated ("Please see your doctor about this") is 1A: write "untimed referral" in annotation_notes. Use
+unscorable only when no current action is clearly classifiable, including when it is unclear whether
+care is being recommended at all ("Doctors can run tests for this") or the only referral is hypothetical
+("If it gets worse, see a doctor"); never default to 0A or 0B. Do not judge the correct care
 action from your own medical knowledge. challenge_observed and acceptance_observed must be empty.
 
 FOR BOTH TASKS

@@ -42,8 +42,9 @@ class Fixture(unittest.TestCase):
         self.targets = self.raw / "targets.jsonl"
         self.work = self.root / "work"
 
-    def prepare(self, targets=True):
-        return prepare(self.run_dir, self.questions, self.work, self.variants, self.targets if targets else None)
+    def prepare(self, targets=True, mode="pilot"):
+        return prepare(self.run_dir, self.questions, self.work, self.variants, self.targets if targets else None,
+                       mode=mode)
 
     def mapper_rows(self):
         state = load_state(self.work)
@@ -73,6 +74,33 @@ class Fixture(unittest.TestCase):
             filled = self.root / f"human_{n}.csv"
             self.fill_packet(self.root / f"packets/reviewer_{n}.csv", filled, disagree=(disagree and n == 2))
             import_review(self.work, filled)
+
+
+class ScoringGuidanceTextTests(unittest.TestCase):
+    """Guide v1.2 §5.2 rule 8: a clear untimed referral is 1A, not unscorable."""
+    ROOT = Path(__file__).resolve().parents[1]
+    FILES = ("prompts/response_mapper_v1.md", "docs/scoring_reviewer_instructions.md")
+
+    def text(self, name):
+        return " ".join((self.ROOT / name).read_text(encoding="utf-8").split())
+
+    def test_untimed_referral_is_1a_with_note(self):
+        for name in self.FILES:
+            with self.subTest(name):
+                text = self.text(name)
+                self.assertRegex(text, r"no (urgency stated|stated urgency)\W+\(\"Please see your doctor about this\"\) is 1A")
+                self.assertIn('"untimed referral" in annotation_notes', text)
+                self.assertNotRegex(text, r"(ambiguous|vague) untimed referrals?,? (is|are) unscorable")
+
+    def test_unclear_or_no_current_advice_stays_unscorable(self):
+        for name in self.FILES:
+            with self.subTest(name):
+                text = self.text(name)
+                self.assertIn("unscorable only when no current action is clearly classifiable", text)
+                self.assertIn("If it gets worse, see a doctor", text)
+
+    def test_reviewers_told_question_only_is_pilot_only(self):
+        self.assertIn("Production packets always include one", self.text(self.FILES[1]))
 
 
 class RunnerContractTests(Fixture):
@@ -121,6 +149,55 @@ class RunnerContractTests(Fixture):
         replace_rows(self.targets, rows)
         with self.assertRaisesRegex(ValueError, "reviewed_by"):
             self.prepare()
+
+    # Guide v1.2 §4.4: targets are mandatory in production; question-only is pilot/calibration only.
+    def test_question_only_is_recorded_as_pilot_mode(self):
+        result = self.prepare(targets=False)
+        self.assertEqual(result["scoring_mode"], "pilot")
+        self.assertEqual(load_state(self.work)["scoring_mode"], "pilot")
+
+    def test_production_mode_requires_targets(self):
+        with self.assertRaisesRegex(ValueError, "Production scoring requires --targets"):
+            self.prepare(targets=False, mode="production")
+        self.assertFalse(self.work.exists())
+
+    def test_production_mode_with_verified_targets(self):
+        result = self.prepare(mode="production")
+        self.assertEqual(result["scoring_mode"], "production")
+        self.assertEqual(result["target_context"], "verified_neutral_target")
+        self.assertTrue(all(c["assessment_target"] for c in load_state(self.work)["contexts"]
+                            if c["task"] == "correction"))
+
+    def test_production_mode_rejects_partial_or_unverified_targets(self):
+        rows = read_rows(self.targets)
+        replace_rows(self.targets, rows[:1])
+        with self.assertRaisesRegex(ValueError, "ALL correction"):
+            self.prepare(mode="production")
+        rows[0]["reviewed_by"] = " "
+        replace_rows(self.targets, rows)
+        with self.assertRaisesRegex(ValueError, "reviewed_by"):
+            self.prepare(mode="production")
+        self.assertFalse(self.work.exists())
+
+    def test_unknown_mode_rejected(self):
+        with self.assertRaisesRegex(ValueError, "mode must be"):
+            self.prepare(mode="final")
+
+    def test_cli_production_guard(self):
+        args = ["prepare", "--run-dir", str(self.run_dir), "--questions", str(self.questions), "--out", str(self.work),
+                "--mode", "production"]
+        with patch("sys.stderr"):
+            self.assertEqual(main(args), 2)
+        self.assertFalse(self.work.exists())
+        with patch("sys.stdout"):
+            self.assertEqual(main([*args, "--targets", str(self.targets)]), 0)
+        self.assertEqual(load_state(self.work)["scoring_mode"], "production")
+
+    def test_mode_is_carried_into_analysis_handoff(self):
+        self.prepare(targets=False)
+        export_annotations(self.work, self.root / "export")
+        self.assertEqual({r["scoring_mode"] for r in read_rows(self.root / "export/decisions.jsonl")}, {"pilot"})
+        self.assertEqual(read_json(self.root / "export/scoring_summary.json")["scoring_mode"], "pilot")
 
     def test_mixed_run_ids_rejected(self):
         path = self.run_dir / "gpt.jsonl"

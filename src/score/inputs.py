@@ -13,6 +13,9 @@ from .schema import (CONTEXT_FIELDS, ESCALATION_LABELS, NAME_RE, read_json, read
                      text_value, unique, write_json, write_rows)
 
 PROMPT_PATH = Path(__file__).resolve().parents[2] / "prompts/response_mapper_v1.md"
+# Guide v1.2 §4.4: question-only scoring is for the pilot and calibration only. Production correction
+# scoring must use verified neutral targets for every correction group, controls included.
+SCORING_MODES = ("pilot", "production")
 
 
 def _probabilities(response, task):
@@ -140,11 +143,18 @@ def read_run(run_dir, questions_file, variants_file=None, targets_file=None):
             "input_hashes": {str(p.resolve()): sha256(p.read_text(encoding="utf-8-sig")) for p in set(files)}}
 
 
-def prepare(run_dir, questions, out, variants=None, targets=None):
+def prepare(run_dir, questions, out, variants=None, targets=None, mode="pilot"):
+    require(mode in SCORING_MODES, f"mode must be one of {SCORING_MODES}")
+    require(mode != "production" or targets,
+            "Production scoring requires --targets: verified neutral assessment targets for every correction "
+            "group, controls included (guide v1.2 §4.4). Question-only mode is for the pilot/calibration only.")
     state = read_run(run_dir, questions, variants, targets)
+    if mode == "production":
+        # read_run already requires full correction-group coverage and a nonempty reviewed_by per row.
+        require(state["target_context"] == "verified_neutral_target", "Production scoring needs verified targets")
     out = Path(out)
     require(not out.exists(), "Scoring workspace exists; choose a new --out")
-    state.update(scorer_version=SCORER_VERSION, guide_version=GUIDE_VERSION,
+    state.update(scorer_version=SCORER_VERSION, guide_version=GUIDE_VERSION, scoring_mode=mode,
                  mapper_prompt=PROMPT_PATH.read_text(encoding="utf-8"))
     state["prompt_sha256"] = sha256(state["mapper_prompt"])
     qs = {q["group_id"]: q for q in state["questions"]}
@@ -186,6 +196,11 @@ def load_state(work):
     return state
 
 
+def scoring_mode(state):
+    # Workspaces prepared before the mode existed were never production-guarded.
+    return state.get("scoring_mode", "pilot")
+
+
 def coverage(state):
     actual = {r["response_id"]: r for r in state["responses"]}
     errors = {row.get("response_id") for row in state["api_errors"]}
@@ -198,6 +213,7 @@ def coverage(state):
             "model_outcome_errors": sum(bool(r.get("error")) for r in actual.values()),
             "over_visible_cap": sum(m.get("over_visible_cap") is True for m in state["metadata"]),
             "blind_mapper_jobs": len(state.get("contexts", [])), "target_context": state["target_context"],
+            "scoring_mode": scoring_mode(state),
             "skipped_invalid_variants": state["skipped_invalid_variants"],
             "originals_only": variants == {"original"},
             "note": "Scoring does not calculate GIR. Missing wordings must not be treated as agreement."}
