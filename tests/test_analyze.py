@@ -378,6 +378,46 @@ class InvalidatedParaphraseTests(Fixture):
         with self.assertRaisesRegex(ValueError, "not collected in this run"):
             load_data(annotations, questions, list(MODELS), invalidations=self.invalidate({"group_id": "onc-002", "variant_id": "p2"}))
 
+    # "Collected" means at least one model has a received response; placeholders do not count.
+    def set_slot(self, gid, vid, statuses):
+        """statuses: model -> new status (decision cleared), or None to delete that model's row."""
+        def change(rows):
+            for row in list(rows):
+                if (row["group_id"], row["variant_id"]) == (gid, vid) and row["model_key"] in statuses:
+                    if statuses[row["model_key"]] is None:
+                        rows.remove(row)
+                    else:
+                        row.update(status=statuses[row["model_key"]], decision=None)
+        self.decide(change)
+
+    def assert_excluded_for_every_model(self, path, gid):
+        groups = [g for g in self.groups(path) if g["group_id"] == gid]
+        self.assertEqual({g["model_key"] for g in groups}, set(MODELS))
+        for g in groups:
+            self.assertFalse(g["complete"])
+            self.assertIn("invalidated_paraphrase", g["exclusion_reasons"])
+            self.assertEqual(g["invalidated_variants"], ["p2"])
+
+    def test_slot_with_only_missing_response_placeholders_is_rejected(self):
+        self.set_slot("onc-002", "p2", dict.fromkeys(MODELS, "missing_response"))
+        with self.assertRaisesRegex(ValueError, "not collected in this run"):
+            self.groups(self.invalidate({"group_id": "onc-002", "variant_id": "p2"}))
+        # Placeholders for some models and absent rows for the rest are still not a collected slot.
+        self.set_slot("onc-002", "p2", {"gpt": None})
+        with self.assertRaisesRegex(ValueError, "not collected in this run"):
+            self.groups(self.invalidate({"group_id": "onc-002", "variant_id": "p2"}, name="again.jsonl"))
+
+    def test_slot_received_by_one_model_is_accepted_and_excludes_every_model(self):
+        self.set_slot("onc-002", "p2", {"gpt": None, "jev": "missing_response"})  # only claude received it
+        self.assert_excluded_for_every_model(self.invalidate({"group_id": "onc-002", "variant_id": "p2"}), "onc-002")
+
+    def test_received_unscorable_or_unusable_responses_count_as_collected(self):
+        for n, status in enumerate(("unscorable", "unmapped", "empty_response", "model_error")):
+            with self.subTest(status):
+                self.set_slot("onc-002", "p2", dict.fromkeys(MODELS, status))
+                path = self.invalidate({"group_id": "onc-002", "variant_id": "p2"}, name=f"received{n}.jsonl")
+                self.assert_excluded_for_every_model(path, "onc-002")
+
     def test_replacement_records_cannot_be_substituted(self):
         def substitute(rows):
             original = next(r for r in rows if (r["model_key"], r["group_id"], r["variant_id"]) == ("gpt", "onc-002", "p2"))

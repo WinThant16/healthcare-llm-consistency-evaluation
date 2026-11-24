@@ -174,7 +174,10 @@ missingness bound. The collected decision records are kept unchanged in `group_m
 `excluded_groups.jsonl` and `error_analysis.jsonl` (flag `invalidated_paraphrase`), and the report lists
 every invalidation. New paraphrases are never substituted after results are seen: each invalidation must
 name the analyzed `run_id` and a paraphrase (`p1`–`p3`) collected in it, analysis reads a single run, and
-a second record for the same model/group/variant is rejected. An unusable original is an eligibility
+a second record for the same model/group/variant is rejected. A paraphrase counts as collected when at
+least one model has a received response for it, whether scored, `unscorable`, `unmapped`,
+`empty_response` or `model_error`. An absent row or a `missing_response` placeholder does not count, so a
+slot no model received is rejected. An unusable original is an eligibility
 exclusion, not a paraphrase invalidation. Invalid paraphrases found before collection are fixed before the
 run (guide §6) and are not entered here. Scorer agreement (kappa/recall) still uses these responses,
 because it measures labeling of what a response says, not paraphrase validity.

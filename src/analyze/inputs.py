@@ -112,7 +112,10 @@ def load_invalidations(path, run_id, questions, decisions):
     if not path:
         return {}
     rows = read_rows(path)
-    collected = {(gid, vid) for _, gid, vid in decisions}
+    # Collected = at least one model actually returned a response for the slot. An absent row or a
+    # missing_response placeholder is not collection. Any received response counts, scorable or not
+    # (scored, unscorable, unmapped, empty_response, model_error).
+    collected = {(gid, vid) for (_, gid, vid), row in decisions.items() if row["status"] != "missing_response"}
     result = {}
     for row in rows:
         unknown = set(row) - set(INVALIDATION_REQUIRED) - set(INVALIDATION_OPTIONAL)
@@ -126,8 +129,9 @@ def load_invalidations(path, run_id, questions, decisions):
         require(gid in questions, f"{gid}: invalidation for an unknown question group")
         require(vid in PARAPHRASES, f"{gid}/{vid}: only paraphrases p1/p2/p3 can be invalidated; an unusable "
                 "original is an eligibility exclusion, not a paraphrase invalidation")
-        require((gid, vid) in collected, f"{gid}/{vid}: not collected in this run; post-collection invalidations "
-                "must refer to collected paraphrases (fix paraphrases before collection, guide §6)")
+        require((gid, vid) in collected, f"{gid}/{vid}: not collected in this run (no model has a received "
+                "response); post-collection invalidations must refer to collected paraphrases (fix paraphrases "
+                "before collection, guide §6)")
         require((gid, vid) not in result, f"Duplicate invalidation for {gid}/{vid}")
         result[gid, vid] = {k: row[k] for k in (*INVALIDATION_REQUIRED, *INVALIDATION_OPTIONAL) if k in row}
     return result
