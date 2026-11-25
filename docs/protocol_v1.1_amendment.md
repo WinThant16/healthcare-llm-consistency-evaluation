@@ -128,7 +128,7 @@ Jev can't produce a patient-facing answer, so it answers the study's decision di
 
 ## Approval
 
-- [ ] Advait (data lead)
+- [x] Advait (data lead): dataset, mapping and sampling as implemented in `src/data/`, frozen at `data-v1.0`
 - [x] Win (clinical-labeling lead): UPHILL mapping and the Level 2 choice
 - [ ] Sahil (paraphrase lead)
 - [x] Abhi (engineering lead): Jev API access confirmed 15 Nov (`jev-latest` → `jev-1.14.0`)
