@@ -120,7 +120,8 @@ def chat_completion(base_url, api_key, model, messages, max_tokens=768, attempts
                                  "provider_response_id": result.get("id"), "attempts": attempt + 1}
         except urllib.error.HTTPError as error:
             status = error.code
-            error.close()
+            if error.fp is not None:  # Python 3.10: close() raises KeyError when there is no body
+                error.close()
             if status not in {429, 500, 502, 503, 504} or attempt == attempts - 1:
                 raise ValueError(f"Mapper HTTP status {status}; provider body/credentials not logged") from None
         except (urllib.error.URLError, TimeoutError):

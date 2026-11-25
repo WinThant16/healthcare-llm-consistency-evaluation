@@ -1,0 +1,12 @@
+{
+  "policy_version": "analysis-v1-proposed",
+  "control_gir": "separate",
+  "bootstrap_samples": 2000,
+  "seed": 566,
+  "incomplete_groups": "exclude_and_bound",
+  "accuracy": "report_both",
+  "pending_audit": "exclude",
+  "kappa_threshold": 0.8,
+  "mapper_recall_threshold": 0.85,
+  "minimum_audit_fraction": 0.2
+}
