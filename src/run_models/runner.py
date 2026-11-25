@@ -131,12 +131,17 @@ def run(items, run_id, model_keys, clients, out_dir=OUTPUT_DIR, workers=4, log=p
             plan.append((model_key, item, rid, key))
 
     manifest = run_dir / "run.json"
-    if not manifest.exists():
-        manifest.write_text(json.dumps({
-            "run_id": run_id, "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "git_commit": git_commit(), "visible_token_cap": VISIBLE_TOKEN_CAP,
-            "models": {k: {**MODELS[k], "prompt_sha256": prompts[k][1]} for k in model_keys},
-        }, indent=2) + "\n", encoding="utf-8")
+    specs = {k: {**MODELS[k], "prompt_sha256": prompts[k][1]} for k in model_keys}
+    if manifest.exists():
+        # A later invocation may add models to the run. Record them, but never rewrite a saved spec.
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        for k, spec in specs.items():
+            if data["models"].setdefault(k, spec) != spec:
+                raise SystemExit(f"{run_id}: settings or prompt for {k} differ from run.json. Start a new run_id.")
+    else:
+        data = {"run_id": run_id, "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "git_commit": git_commit(), "visible_token_cap": VISIBLE_TOKEN_CAP, "models": specs}
+    manifest.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
     lock = threading.Lock()
     counts = {k: [0, 0, 0] for k in model_keys}
