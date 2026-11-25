@@ -1,0 +1,4 @@
+candidate_id,domain,gold_label_mapped,reviewer_1,status_1,reason_1,reviewer_2,status_2,reason_2,adjudicated_status,adjudicated_reason,adjudicated_premise,adjudicator,notes
+onc-cm-109,oncology,correction_required,win,exclude,not_patient_facing: awareness campaign,advait,include,,exclude,,,win,resolved by awareness campaign planning (guide 3.2)
+onc-cm-59,oncology,correction_required,win,exclude,"disputed_label: framed as ""if surgery is the sole treatment,"" and some early oral cancers really are treated with surgery alone",advait,include,,exclude,,,win,resolved by asking conditionally;  does not assert the belief
+onc-cmnfp-1081,oncology,no_correction,win,include,,advait,exclude,disputed_label: same belief as positive onc-cm-408 with opposite label; keep the positive (guide 3.4),exclude,,,win,source-label conflict with onc-cm-408; add to guide 7.3 log

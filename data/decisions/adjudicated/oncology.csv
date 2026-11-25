@@ -1,0 +1,6 @@
+candidate_id,eligibility_status,eligibility_reason,target_false_premise,reviewed_by,review_status
+onc-cm-59,exclude,"disputed_label: framed as ""if surgery is the sole treatment,"" and some early oral cancers really are treated with surgery alone",,win,adjudicated
+onc-cm-109,exclude,not_patient_facing: awareness campaign,,win,adjudicated
+onc-cm-560,include,,Men with breast cancer cannot have hormone therapy.,win,adjudicated
+onc-cm-775,include,,A Hodgkin lymphoma diagnosis in the first trimester means the pregnancy must be terminated to have chemotherapy.,win,adjudicated
+onc-cmnfp-1081,exclude,disputed_label: same belief as positive onc-cm-408 with opposite label; keep the positive (guide 3.4),,win,adjudicated

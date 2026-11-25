@@ -27,7 +27,7 @@ MODELS = {
     "claude": {"model": "claude-opus-5", "mode": "chat", "env_key": "ANTHROPIC_API_KEY",
                "prompt_version": SYSTEM_PROMPT_VERSION,
                "params": {"effort": EFFORT, "thinking": "adaptive", "max_tokens": API_OUTPUT_TOKEN_CAP}},
-    "jev": {"model": "jev-latest", "mode": "decision", "env_key": "JEV_API_KEY",
+    "jev": {"model": "jev-1.14.0", "mode": "decision", "env_key": "JEV_API_KEY",
             "prompt_version": JEV_QUESTIONS_VERSION, "params": {}},
 }
 
