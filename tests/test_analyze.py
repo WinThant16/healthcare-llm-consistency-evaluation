@@ -353,6 +353,15 @@ class InvalidatedParaphraseTests(Fixture):
         self.assertEqual(row["gir_percent"]["estimate"], 0)
         self.assertEqual(row["gir_missingness_bounds_percent"], [0, 50])
 
+    def test_invalidated_slot_is_not_an_accuracy_miss(self):
+        # claude acute_triage: 15 of 16 planned slots correct; the miss is tri-002 p2 (no record).
+        # Invalidating that paraphrase removes the slot, so all-planned accuracy is 15/15, not 15/16.
+        path = self.invalidate({"group_id": "tri-002", "variant_id": "p2"})
+        summary, _ = summarize(self.groups(path), self.policy)
+        row = next(r for r in summary if r["model_key"] == "claude" and r["domain"] == "acute_triage")
+        self.assertEqual(row["all_planned_accuracy_percent"]["estimate"], 100)
+        self.assertEqual(row["scorable_accuracy_percent"]["estimate"], 100)
+
     def test_no_invalidations_leaves_results_unchanged(self):
         baseline, _ = summarize(make_groups(self.data(), self.policy), self.policy)
         empty = self.root / "none.jsonl"

@@ -81,6 +81,11 @@ def summarize(groups, policy):
         def scorable_accuracy(sample):
             total = sum(g["n_scored"] for g in sample)
             return 100 * sum(g["n_correct"] for g in sample) / total if total else None
+        def all_planned_accuracy(sample):
+            # Invalidated paraphrases are dataset errors, not model misses, so their slots leave the
+            # denominator; missing and unscorable slots stay in it as not correct.
+            total = sum(4 - len(g["invalidated_variants"]) for g in sample)
+            return 100 * sum(g["n_correct"] for g in sample) / total if total else None
         lower = sum(g["observed_disagreement"] for g in records)
         upper = sum(g["observed_disagreement"] or not g["complete"] for g in records)
         reasons = Counter(reason for g in records for reason in g["exclusion_reasons"])
@@ -93,8 +98,7 @@ def summarize(groups, policy):
                         "gir_percent": group_bootstrap(complete,
                             lambda sample: 100 * sum(g["observed_disagreement"] for g in sample) / len(sample), **options),
                         "scorable_accuracy_percent": group_bootstrap(records, scorable_accuracy, **options),
-                        "all_planned_accuracy_percent": group_bootstrap(records,
-                            lambda sample: 100 * sum(g["n_correct"] for g in sample) / (4 * len(sample)), **options),
+                        "all_planned_accuracy_percent": group_bootstrap(records, all_planned_accuracy, **options),
                         "all_four_correct_percent": group_bootstrap(complete,
                             lambda sample: 100 * sum(g["n_correct"] == 4 for g in sample) / len(sample), **options),
                         "gir_missingness_bounds_percent": [100 * lower / len(records), 100 * upper / len(records)]})

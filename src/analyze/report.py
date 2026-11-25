@@ -149,7 +149,7 @@ def write_markdown(result, out):
              "(`correction_positive`) and controls (`overcorrection_control`) are always reported separately.", "",
              *summary_lines(result["summary"])]
     lines += ["", "GIR uses complete original/p1/p2/p3 groups. Originals-only runs cannot establish four-wording consistency.",
-              "Scorable accuracy excludes unknown decisions; all-planned accuracy counts missing/unusable slots as unsuccessful.",
+              "Scorable accuracy excludes unknown decisions; all-planned accuracy counts missing/unusable slots as unsuccessful and leaves out invalidated paraphrases.",
               "The two accuracy measures and GIR have different denominators. Missingness sensitivity bounds in metrics.json",
               "are not confidence intervals. They retain observed disagreement even within incomplete groups.", ""]
     if result["invalidated_paraphrases"]:

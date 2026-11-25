@@ -169,8 +169,8 @@ Optional fields: `invalidated_at`, `notes`. Any other field is rejected. The inv
 group for EVERY model. The group is excluded from primary GIR even when all four decisions are present,
 and is reported with its own exclusion reason, `invalidated_paraphrase` (not `missing_variant_record`).
 The invalidated paraphrase's decision does not count toward observed disagreement or scorable accuracy;
-all-planned accuracy counts its slot as not correct, and the group is incomplete for the upper
-missingness bound. The collected decision records are kept unchanged in `group_metrics.jsonl`,
+all-planned accuracy leaves its slot out of the denominator (a dataset error, not a model miss), and the
+group is incomplete for the upper missingness bound. The collected decision records are kept unchanged in `group_metrics.jsonl`,
 `excluded_groups.jsonl` and `error_analysis.jsonl` (flag `invalidated_paraphrase`), and the report lists
 every invalidation. New paraphrases are never substituted after results are seen: each invalidation must
 name the analyzed `run_id` and a paraphrase (`p1`–`p3`) collected in it, analysis reads a single run, and
@@ -192,7 +192,7 @@ Null/unscorable/absent decisions are never converted to no, clarification, or ag
 pending reviews remain visible. Agree this choice before final analysis.
 
 **Accuracy:** correction positives expect yes, clean controls expect no, escalation expects the provided
-source class. Report scorable-response accuracy and all-planned accuracy (unknown slots unsuccessful),
+source class. Report scorable-response accuracy and all-planned accuracy (unknown slots unsuccessful; invalidated paraphrase slots left out),
 plus all-four-correct groups. These are distinct from GIR and from scorer agreement.
 
 **95% CIs:** 2,000 percentile bootstrap resamples by default, resampling WHOLE questions within each
