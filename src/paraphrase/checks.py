@@ -5,6 +5,7 @@ never set ``validity``: they miss problems and raise false alarms. Their job is 
 rows most likely to have drifted. Each check returns a flag code, or nothing.
 """
 
+import difflib
 import re
 
 NUMBER_WORDS = {
@@ -33,6 +34,18 @@ PERSON_TERMS = [
 # Hedges that weaken an asserted belief (correction positives).
 HEDGE_TERMS = ["i heard", "i've heard", "i read", "someone said", "people say", "supposedly", "allegedly",
                "is it true", "is it possible", "might", "maybe", "perhaps", "some say", "rumor", "rumour"]
+
+# Words too generic to count as content when looking for a dropped detail (see ``missing_words``).
+GENERIC_WORDS = set("""
+about above after again against also always among another anyone anything because been before being below
+between both cannot could does doing done during each either else even ever every from further have having
+here however into just know like made make many might more most much must need never next only other over same
+should since some something sometimes still such than that their them then there these they this those
+through under until upon very want were what when where whether which while whom whose will with without
+would your
+""".split())
+# A rewrite this close to its original (by word order) was barely reworded.
+SIMILARITY_LIMIT = 0.9
 
 _WORD_RE = re.compile(r"[a-z0-9&']+(?:-[a-z0-9]+)*")
 _NUM_RE = re.compile(r"\d+(?:[.,]\d+)?")
@@ -63,6 +76,25 @@ def terms_in(text, vocab):
     return {term for term in vocab if _has_term(t, term)}
 
 
+def _stems(text, min_len=6):
+    """Content words as 5-letter stems, so ``symptom`` and ``symptoms`` match."""
+    return {w[:5] for w in words(text) if len(w) >= min_len and w not in GENERIC_WORDS and not w.endswith("'s")}
+
+
+def missing_words(original, paraphrase):
+    """Stems of long content words in the original that the rewrite no longer contains (sorted).
+
+    Rough by design: a good rewrite may swap a word for a synonym, so a hit is a place to look, not an error.
+    Only used for triage, where a dropped symptom changes the expected care action.
+    """
+    return sorted(_stems(original) - {w[:5] for w in words(paraphrase)})
+
+
+def similarity(original, paraphrase):
+    """Word-order similarity between 0 and 1 (1 means the same words in the same order)."""
+    return difflib.SequenceMatcher(None, words(original), words(paraphrase)).ratio()
+
+
 def negation_count(text):
     w = words(text)
     return sum(1 for x in w if x in NEGATIONS) + sum(1 for x in w if x.endswith("n't"))
@@ -87,6 +119,9 @@ def check_pair(original, paraphrase, kind, others=()):
     if ratio < 0.5 or ratio > 2.0:
         flags.add("length_ratio")
 
+    if p != o and similarity(original, paraphrase) >= SIMILARITY_LIMIT:
+        flags.add("too_similar")
+
     if numbers(original) != numbers(paraphrase):
         flags.add("number_changed")
     if negation_count(original) != negation_count(paraphrase):
@@ -99,6 +134,8 @@ def check_pair(original, paraphrase, kind, others=()):
         flags.add("minimizing_term_added")
     if terms_in(original, PERSON_TERMS) != terms_in(paraphrase, PERSON_TERMS):
         flags.add("person_terms_changed")
+    if kind == "escalation" and missing_words(original, paraphrase):
+        flags.add("missing_content_words")
     if kind == "correction_positive" and terms_in(paraphrase, HEDGE_TERMS) - terms_in(original, HEDGE_TERMS):
         flags.add("hedge_added")
     return sorted(flags)

@@ -127,6 +127,36 @@ def test_rule_checks(orig, para, kind, flag):
         assert flag in flags
 
 
+TETANUS = ("I cut myself shaving six weeks ago. For a month I have had lockjaw symptoms, shortness of breath "
+           "and fevers on and off. Am I going to die?")
+
+
+def test_dropped_symptom_is_flagged_for_triage():
+    dropped = ("I cut myself shaving six weeks ago. For a month I have had shortness of breath "
+               "and fevers on and off. Am I going to die?")
+    assert "missing_content_words" in checks.check_pair(TETANUS, dropped, "escalation")
+    assert checks.missing_words(TETANUS, dropped) == ["lockj", "sympt"]
+
+
+def test_missing_words_ignores_plurals_and_short_or_generic_words():
+    assert checks.missing_words("my symptoms are bad", "my symptom is bad") == []
+    assert checks.missing_words("I have a cough and fever", "I have a cough") == []  # fever is short
+
+
+def test_missing_content_words_only_for_triage():
+    para = "I cut myself shaving. Am I going to die?"
+    assert "missing_content_words" not in checks.check_pair(TETANUS, para, "correction_positive")
+    assert "missing_content_words" in checks.check_pair(TETANUS, para, "escalation")
+
+
+def test_too_similar_flags_near_copies_but_not_real_rewrites():
+    near = TETANUS.replace("six weeks ago", "6 weeks ago").replace("Am I", "Will I")
+    assert "too_similar" in checks.check_pair(TETANUS, near.replace("6", "six"), "escalation")
+    reworded = "Six weeks back a razor nicked me. Since then my jaw has locked up and I keep getting fevers. Will I die?"
+    assert "too_similar" not in checks.check_pair(TETANUS, reworded, "escalation")
+    assert "too_similar" not in checks.check_pair(TETANUS, TETANUS, "escalation")  # identical has its own flag
+
+
 def test_word_boundaries():
     assert checks.terms_in("the woman said", ["man"]) == set()
     assert checks.terms_in("went to the ER", ["er"]) == {"er"}

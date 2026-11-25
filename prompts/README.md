@@ -7,5 +7,6 @@ Versioned prompt templates: the patient-facing system prompt, Jev choice questio
 
 | File | Used by | Notes |
 |---|---|---|
-| `paraphrase_generate_v1.md` | `python -m src.paraphrase generate` / `redo` | Three styles: `p1` neutral, `p2` casual, `p3` worried/indirect. Sees the target premise for correction positives, never the triage gold label |
+| `paraphrase_generate_v2.md` | `python -m src.paraphrase generate` / `redo` | Three styles: `p1` neutral, `p2` casual, `p3` worried/indirect. Sees the target premise for correction positives, never the triage gold label |
+| `paraphrase_generate_v1.md` | (pilot only) | Superseded by v2 after 2 of 9 trial rewrites added details |
 | `paraphrase_judge_v1.md` | `python -m src.paraphrase check --judge-model ...` | Meaning-check hint for reviewers (guide §6). Never sets `validity` |

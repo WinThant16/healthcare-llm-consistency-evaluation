@@ -9,10 +9,10 @@ from pathlib import Path
 from string import Template
 
 PROMPT_DIR = Path("prompts")
-GENERATE_VERSION = "paraphrase_generate_v1"
+GENERATE_VERSION = "paraphrase_generate_v2"
 JUDGE_VERSION = "paraphrase_judge_v1"
 
-# Fixed variant -> style mapping (prompts/paraphrase_generate_v1.md). Never reorder after a run.
+# Fixed variant -> style mapping (prompts/paraphrase_generate_v1.md, unchanged in v2). Never reorder after a run.
 STYLES = {"p1": "neutral", "p2": "casual", "p3": "worried_indirect"}
 VARIANT_IDS = ("original", *STYLES)
 
