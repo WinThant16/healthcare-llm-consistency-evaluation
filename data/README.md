@@ -89,6 +89,12 @@ python -m src.data.sample --pilot                   # 5-question pilot → data/
   Group IDs (`onc-001`…) are assigned in a seeded shuffle, so they don't reveal labels.
   `data/questions_manifest.csv` (IDs and labels only, committed), together with the raw-data checksums, is
   enough to rebuild `questions.jsonl` exactly.
+- **Frozen: `data-v1.0`** (25 Nov 2026). 240 groups from first-round decisions plus the oncology
+  second review and adjudication (#24, #28; kappa 0.84). Rebuilt with `python -m src.data.sample`,
+  `questions.jsonl` has SHA-256 `aa5aebd0da129d9ed7cd3fc4099a16a1ec59c13fcf855b133248cf6232378772`. Check your copy with `shasum -a 256` before generating
+  paraphrases or running models. Relative to the pre-adjudication manifest, 23 oncology group IDs point to
+  a different question, so nothing generated earlier can be reused. Any later decision change, including the
+  public-health and triage second reviews, needs a new tag (`data-v1.1`) and is listed here.
 - **CARE-Bench `1B`:** all 22 round-1 cases are on the sheet. Excluding more than 2 makes the target
   unreachable without the multi-turn decision.
 
