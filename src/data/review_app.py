@@ -19,6 +19,7 @@ import argparse
 import csv
 import json
 import os
+import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -39,6 +40,7 @@ class Sheets:
         self.reviewer = reviewer
         self.pools = {}
         self.paths = {}
+        self._lock = threading.Lock()  # the server is threaded; saves must not interleave read-modify-write
         for domain in TARGETS:
             path = self.sheet_dir / f"{domain}.csv"
             if path.exists():
@@ -63,9 +65,21 @@ class Sheets:
         return out
 
     def save(self, domain, candidate_id, updates):
-        """Write one row's decision into the sheet. Returns a list of errors (empty when saved)."""
+        """Write one row's decision into the sheet. Returns a list of errors (empty when saved).
+
+        Saves run one at a time: the server is threaded and the browser saves in the background, so two quick
+        saves could otherwise read the same sheet, write the same temp file, and lose one of the decisions.
+        """
         if domain not in self.paths:
             return [f"unknown domain {domain!r}"]
+        with self._lock:
+            try:
+                return self._save(domain, candidate_id, updates)
+            except PermissionError:
+                return [f"could not write {self.paths[domain].name}: the file is locked. "
+                        "Close the sheet in Excel (or any other program that has it open) and save again."]
+
+    def _save(self, domain, candidate_id, updates):
         fields, rows = self.read(domain)
         row = next((r for r in rows if r["candidate_id"] == candidate_id), None)
         if row is None:
@@ -79,13 +93,15 @@ class Sheets:
         row.update(clean)
         row["reviewed_by"] = self.reviewer if clean["eligibility_status"] else ""
         tmp = self.paths[domain].with_suffix(".csv.tmp")
-        with open(tmp, "w", newline="", encoding="utf-8-sig") as f:
-            writer = csv.DictWriter(f, fieldnames=fields or SHEET_FIELDS)
-            writer.writeheader()
-            writer.writerows(rows)
-        os.replace(tmp, self.paths[domain])
+        try:
+            with open(tmp, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.DictWriter(f, fieldnames=fields or SHEET_FIELDS)
+                writer.writeheader()
+                writer.writerows(rows)
+            os.replace(tmp, self.paths[domain])
+        finally:
+            tmp.unlink(missing_ok=True)
         return []
-
 
 def make_handler(sheets, title):
     page = PAGE.replace("__CONFIG__", json.dumps({

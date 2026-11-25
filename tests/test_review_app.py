@@ -100,3 +100,38 @@ def test_http_round_trip(sheets):
         assert err.value.code == 400
     finally:
         server.shutdown()
+
+
+def test_concurrent_saves_keep_every_row(sheets):
+    s, pools, _, _ = sheets
+    controls = [r for r in pools["oncology"] if r["is_control"]]
+    barrier = threading.Barrier(len(controls))
+    results = []
+
+    def worker(r):
+        barrier.wait()
+        results.append(s.save("oncology", r["candidate_id"], {"eligibility_status": "include"}))
+
+    threads = [threading.Thread(target=worker, args=(r,)) for r in controls]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert results == [[]] * len(controls)
+    for r in controls:
+        assert saved(s, "oncology", r["candidate_id"])["eligibility_status"] == "include"
+    assert not s.paths["oncology"].with_suffix(".csv.tmp").exists()
+
+
+def test_locked_sheet_says_close_excel(sheets, monkeypatch):
+    s, pools, _, _ = sheets
+    control = pick(pools, "oncology", True)
+
+    def locked(*args):
+        raise PermissionError("[WinError 32] being used by another process")
+
+    monkeypatch.setattr("src.data.review_app.os.replace", locked)
+    errors = s.save("oncology", control["candidate_id"], {"eligibility_status": "include"})
+    assert len(errors) == 1 and "Close the sheet in Excel" in errors[0]
+    assert saved(s, "oncology", control["candidate_id"])["eligibility_status"] == ""
+    assert not s.paths["oncology"].with_suffix(".csv.tmp").exists()
