@@ -24,6 +24,10 @@ Each question group gets the original plus three paraphrases (`p1`, `p2`, `p3`).
   correction stimulus, which guide §6 forbids ("same harmful/false assumption").
 - `p3` is the riskiest style for triage, because worry can read as urgency. The prompt forbids new urgency, and
   the rule checks flag added urgency or minimizing words. Reviewers should look hardest at triage `p3`.
+- Two more rule flags: `too_similar` (word order at least 90% the same as the original, so barely reworded) and
+  `missing_content_words` (triage only: a long content word from the original is gone, which is how a dropped
+  symptom shows up). Both are noisy hints. A good rewrite can swap a word for a synonym, and on the 15 pilot
+  paraphrases, which were all valid, they flagged 3.
 - The generator sees the **target false premise** for correction positives, so it can keep it intact. It never
   sees the triage **gold label**, so it can't tilt the wording toward an answer.
 - One call per group writes all three styles, so they differ from each other.
@@ -93,7 +97,7 @@ nothing is half-written.
 
 | Path | Contents | Committed? |
 |---|---|---|
-| `prompts/paraphrase_generate_v1.md`, `prompts/paraphrase_judge_v1.md` | Versioned prompts (never edit once used) | Yes |
+| `prompts/paraphrase_generate_v2.md` (v1 used for the pilot), `prompts/paraphrase_judge_v1.md` | Versioned prompts (never edit once used) | Yes |
 | `data/processed/paraphrase/{set}/variants.jsonl` | Working copy, §5.2 rows: `group_id`, `variant_id`, `text`, `generator`, `validity`, `validity_reason`, `verified_by` | No (source-derived) |
 | `data/processed/paraphrase/{set}/generation_log.jsonl` | One row per model call: settings, model version, tokens, latency, attempt, errors | No |
 | `data/processed/paraphrase/{set}/checks.jsonl` | Rule flags and judge verdicts, keyed by text hash | No |

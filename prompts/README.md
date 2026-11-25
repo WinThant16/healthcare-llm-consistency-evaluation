@@ -7,7 +7,8 @@ Versioned prompt templates: the patient-facing system prompt, Jev choice questio
 
 | File | Used by | Status |
 |---|---|---|
-| `paraphrase_generate_v1.md` | `python -m src.paraphrase generate` / `redo` | Three styles: `p1` neutral, `p2` casual, `p3` worried/indirect. Sees the target premise for correction positives, never the triage gold label |
+| `paraphrase_generate_v2.md` | `python -m src.paraphrase generate` / `redo` | Three styles: `p1` neutral, `p2` casual, `p3` worried/indirect. Sees the target premise for correction positives, never the triage gold label |
+| `paraphrase_generate_v1.md` | (pilot only) | Superseded by v2 after 2 of 9 trial rewrites added details |
 | `paraphrase_judge_v1.md` | `python -m src.paraphrase check --judge-model ...` | Meaning-check hint for reviewers (guide §6). Never sets `validity` |
 | `patient_system_v1.txt` | `gpt`, `claude` | Used in `run-20261115-pilot`. Superseded: its 300-word limit put every Claude reply over 512 visible tokens |
 | `patient_system_v2.txt` | `gpt`, `claude` | Current (200-word limit). Not yet frozen |
