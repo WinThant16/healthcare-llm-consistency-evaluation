@@ -27,3 +27,11 @@ outputs/responses/
 # Only data/decisions/paraphrase/*.csv (IDs, hashes, decisions) is committed.
 data/processed/paraphrase/
 data/processed/questions_*.jsonl
+# Scoring workspaces contain source text, blind identity maps, mapper caches and human reviews.
+outputs/scoring/
+outputs/annotations/
+outputs/scoring_demo*/
+data/processed/scoring/
+# Canonical paraphrase handoff is also source-derived text.
+data/processed/variants.jsonl
+.pytest_cache/

@@ -12,5 +12,6 @@ Versioned prompt templates: the patient-facing system prompt, Jev choice questio
 | `patient_system_v1.txt` | `gpt`, `claude` | Used in `run-20261115-pilot`. Superseded: its 300-word limit put every Claude reply over 512 visible tokens |
 | `patient_system_v2.txt` | `gpt`, `claude` | Current (200-word limit). Not yet frozen |
 | `jev_questions_v1.json` | `jev` | Current. Wording from amendment §2. Not yet frozen |
+| `response_mapper_v1.md` | `python -m src.score` | Blinded observed-response mapper; proposed v1.1 supplement, requires human calibration. Frozen into each scoring workspace |
 
 The versions the runner uses are set in `src/run_models/config.py`.
