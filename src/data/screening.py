@@ -76,7 +76,7 @@ def load_decisions(domain, decision_dir=DECISION_DIR):
     path = Path(decision_dir) / f"{domain}.csv"
     if not path.exists():
         return {}
-    with open(path, newline="", encoding="utf-8") as f:
+    with open(path, newline="", encoding="utf-8-sig") as f:
         return {d["candidate_id"]: d for d in csv.DictReader(f)}
 
 
@@ -329,7 +329,7 @@ def _merge_log(path, rows, keep_fields):
     """
     old = {}
     if Path(path).exists():
-        with open(path, newline="", encoding="utf-8") as f:
+        with open(path, newline="", encoding="utf-8-sig") as f:
             old = {r["candidate_id"]: r for r in csv.DictReader(f)}
     current = {r["candidate_id"] for r in rows}
     for row in rows:
@@ -411,7 +411,7 @@ def adjudicate(pool_dir=POOL_DIR, decision_dir=DECISION_DIR):
         path = decision_dir / name
         if not path.exists():
             return []
-        with open(path, newline="", encoding="utf-8") as f:
+        with open(path, newline="", encoding="utf-8-sig") as f:
             return [{k: (v or "").strip() for k, v in r.items() if k} for r in csv.DictReader(f)]
 
     out = {domain: {} for domain in TARGETS}
