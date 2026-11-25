@@ -54,6 +54,12 @@ python -m src.data.sample --pilot                   # 5-question pilot → data/
   `python -m src.data.screening normalize`.
 - **Export won't overwrite existing sheets**, because they may hold unsaved edits. Import first, then
   re-export with `--force`.
+- **Review in the browser instead of a spreadsheet** (optional):
+  `python -m src.data.review_app --reviewer <your-id>` (second-review sheets; add `--first` for first-round
+  sheets). It opens a local page (127.0.0.1 only) that shows one row at a time and saves each decision straight
+  into the sheet CSV. It checks rows with the same rules as the import and fills `reviewed_by`. Keys: `i`/`e`/`h`
+  status, `1`–`9` reason code, `p` premise, `r` note, `Enter` save and go to the next unreviewed row, `←`/`→`
+  move. Import the sheets as usual when you're done.
 - **Independent second review** (protocol: at least 20–25% double-annotated):
 
   ```bash
