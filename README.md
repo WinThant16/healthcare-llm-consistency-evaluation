@@ -14,11 +14,11 @@ We test two behaviors under meaning-preserving paraphrases:
 
 Protocol v1.0 (5 Oct 2026), as amended by the proposed v1.1.
 
-| Domain | Behavior | Source | Sample |
-|---|---|---|---|
-| Oncology | Correction | Cancer-Myth | 60 positives + 20 physician-confirmed NFP controls |
-| Public health | Correction | UPHILL (v1.1; replaces Pregnant Questions) | 60 false claims + 20 true-claim controls |
-| Acute symptom triage | Escalation | CARE-Bench v1.1 | 80 cases, 20 per action class (`0A` `0B` `1A` `1B`) |
+| Domain               | Behavior   | Source                                     | Sample                                                      |
+| -------------------- | ---------- | ------------------------------------------ | ----------------------------------------------------------- |
+| Oncology             | Correction | Cancer-Myth                                | 60 positives + 20 physician-confirmed NFP controls          |
+| Public health        | Correction | UPHILL (v1.1; replaces Pregnant Questions) | 60 false claims + 20 true-claim controls                    |
+| Acute symptom triage | Escalation | CARE-Bench v1.1                            | 80 cases, 20 per action class (`0A` `0B` `1A` `1B`) |
 
 - **Scale:** 240 question groups. Each group is one original plus 3 paraphrases, so 960 prompts per model.
 - **Models:**
@@ -32,15 +32,15 @@ Protocol v1.0 (5 Oct 2026), as amended by the proposed v1.1.
 
 ## Status
 
-| Stage | Owner | State |
-|---|---|---|
-| Raw data acquisition | Advait | ✅ Cancer-Myth and CARE-Bench committed; UPHILL fetched by script |
-| Candidate pools, schema, validator | Advait | ✅ |
-| Screening tools, sampler, pilot selector | Advait | ✅ code ready, awaiting human screening |
-| Gold labels and annotation guide | Win | ✅ guide v1; labeling in progress |
-| Paraphrases | Sahil | 🟨 pipeline + prompts v1 done (`src/paraphrase/`); pilot reviewed (15/15 valid, hand-written); full run waits on generator/judge models, review split and `data-v1.0` |
-| Model runner (incl. Jev access) | Engineering lead | ⬜ |
-| Scoring and analysis | Bruce | ⬜ |
+| Stage                                    | Owner  | State                                                                                                                                                                     |
+| ---------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Raw data acquisition                     | Advait | ✅ Cancer-Myth and CARE-Bench committed; UPHILL fetched by script                                                                                                         |
+| Candidate pools, schema, validator       | Advait | ✅                                                                                                                                                                        |
+| Screening tools, sampler, pilot selector | Advait | ✅ code ready, awaiting human screening                                                                                                                                   |
+| Gold labels and annotation guide         | Win    | ✅ guide v1; labeling in progress                                                                                                                                         |
+| Model runner (incl. Jev access)          | Abhi   | 🟡 access confirmed for all three models; runner works on the pilot originals                                                                                             |
+| Paraphrases                              | Sahil  | 🟨 pipeline + prompts v1 done (`src/paraphrase/`); pilot reviewed (15/15 valid, hand-written); full run waits on generator/judge models, review split and `data-v1.0` |
+| Scoring and analysis                     | Bruce  | ⬜                                                                                                                                                                        |
 
 The task board with milestones and open decisions is in [`docs/schedule.md`](docs/schedule.md).
 
@@ -53,6 +53,19 @@ bash data/fetch_raw.sh              # downloads UPHILL (not committed) and verif
 python -m src.data.build_pools      # raw data → data/processed/candidates/{domain}.jsonl
 python -m pytest tests              # schema, loader, screening and sampling tests
 ```
+
+### Running the models
+
+Put `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and `JEV_API_KEY` in `.env`, then:
+
+```bash
+python -m src.run_models.runner --check     # verify access and print the returned model IDs
+python -m src.data.sample --pilot           # writes data/processed/pilot.jsonl
+python -m src.run_models.runner --input data/processed/pilot.jsonl --run-id run-YYYYMMDD-pilot
+```
+
+Responses go to `outputs/responses/{run_id}/` (git-ignored). A rerun with the same `--run-id` skips what is
+already saved. See [`codebase.md`](codebase.md) §5.3 for the file formats.
 
 ### From candidates to the 240 groups
 
@@ -69,16 +82,16 @@ python -m src.data.sample                  # → data/processed/questions.jsonl 
 
 ## Documentation
 
-| Document | What it covers |
-|---|---|
-| [`codebase.md`](codebase.md) | **Start here.** Pipeline, ownership, data formats, conventions |
-| [`docs/protocol_v1.0.pdf`](docs/protocol_v1.0.pdf) | Week 1 study design freeze |
-| [`docs/protocol_v1.1_amendment.md`](docs/protocol_v1.1_amendment.md) | UPHILL and Jev changes (proposed) |
-| [`docs/annotation_guide_v1.1.md`](docs/annotation_guide_v1.1.md) | Labeling rules, QC workflow, response annotation format |
-| [`docs/schedule.md`](docs/schedule.md) | Task board, milestones, open decisions |
-| [`docs/paraphrase_guide.md`](docs/paraphrase_guide.md) | Paraphrase styles, workflow, review-sheet instructions |
-| [`docs/proposal.pdf`](docs/proposal.pdf) | Original proposal and execution plan (superseded where the freeze differs) |
-| [`data/README.md`](data/README.md) | Datasets, candidate pools, screening and sampling |
+| Document                                                            | What it covers                                                             |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [`codebase.md`](codebase.md)                                         | **Start here.** Pipeline, ownership, data formats, conventions       |
+| [`docs/protocol_v1.0.pdf`](docs/protocol_v1.0.pdf)                   | Week 1 study design freeze                                                 |
+| [`docs/protocol_v1.1_amendment.md`](docs/protocol_v1.1_amendment.md) | UPHILL and Jev changes (proposed)                                          |
+| [`docs/annotation_guide_v1.2.md`](docs/annotation_guide_v1.2.md)     | Labeling rules, QC workflow, response annotation format                    |
+| [`docs/schedule.md`](docs/schedule.md)                               | Task board, milestones, open decisions                                     |
+| [`docs/paraphrase_guide.md`](docs/paraphrase_guide.md)               | Paraphrase styles, workflow, review-sheet instructions                     |
+| [`docs/proposal.pdf`](docs/proposal.pdf)                             | Original proposal and execution plan (superseded where the freeze differs) |
+| [`data/README.md`](data/README.md)                                   | Datasets, candidate pools, screening and sampling                          |
 
 ## Project structure
 
@@ -89,7 +102,7 @@ data/
   raw/         Source datasets, never edited (UPHILL git-ignored; see fetch_raw.sh)
   decisions/   Screening decisions: IDs and decisions only (committed)
   processed/   Candidate pools, review sheets, questions.jsonl (git-ignored: source text)
-src/data/      Loaders, schema + validator, pre-screen flags, screening, sampling
+src/data/      Loaders, schema + validator, pre-screen flags, screening (+ browser review app), sampling
 prompts/       Versioned model, Jev, mapper and paraphrase prompts
 outputs/       Model responses, annotations, metrics, figures
 tests/         Unit tests

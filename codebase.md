@@ -14,7 +14,7 @@ Where documents conflict, follow this order:
    UPHILL and Gemini with Jev (decision-only). *Proposed; takes effect once the team approves it.*
 2. [`docs/protocol_v1.0.pdf`](docs/protocol_v1.0.pdf), the Week 1 Study Design Freeze (Oct 5, 2026). Scope,
    models, labels, review rules and the GIR metric.
-3. [`docs/annotation_guide_v1.1.md`](docs/annotation_guide_v1.1.md). Labeling rules, field definitions and the QC workflow, including the raw-to-gold mapping and source-specific rules (§3). This file is the most detailed reference in the repo. 
+3. [`docs/annotation_guide_v1.2.md`](docs/annotation_guide_v1.2.md). Labeling rules, field definitions and the QC workflow, including the raw-to-gold mapping and source-specific rules (§3). This file is the most detailed reference in the repo.
 4. [`docs/proposal.pdf`](docs/proposal.pdf). The original proposal and six-week execution and ownership plan.
    **Its domain list, paraphrase count (4) and question counts are superseded by the freeze.**
 
@@ -25,22 +25,22 @@ win. Fix this file in a PR.
 
 ## 1. Frozen study scope
 
-| Domain (`domain`) | Source dataset | Task (`task`) | Sample |
-|---|---|---|---:|
-| `oncology` | Cancer-Myth (+ NFP controls) | `correction` | 60 positive + 20 controls |
-| `public_health` | UPHILL (v1.1; was Pregnant Questions) | `correction` | 60 false-claim + 20 true-claim controls |
-| `acute_triage` | CARE-Bench | `escalation` | 80 (20 per action class) |
-| **Total** | | | **240 question groups** |
+| Domain (`domain`) | Source dataset                        | Task (`task`) |                                  Sample |
+| ------------------- | ------------------------------------- | --------------- | --------------------------------------: |
+| `oncology`        | Cancer-Myth (+ NFP controls)          | `correction`  |               60 positive + 20 controls |
+| `public_health`   | UPHILL (v1.1; was Pregnant Questions) | `correction`  | 60 false-claim + 20 true-claim controls |
+| `acute_triage`    | CARE-Bench                            | `escalation`  |                80 (20 per action class) |
+| **Total**     |                                       |                 |           **240 question groups** |
 
 - **Question group:** 1 original + **3** meaning-preserving paraphrases = 4 variants (`original`, `p1`, `p2`, `p3`).
 - **Volume:** 960 prompts per model × 3 models = **2,880 responses**.
 - **Models:**
 
-  | `model_key` | Model | Mode |
-  |---|---|---|
-  | `gpt` | GPT-6 Astra (`gpt-6-astra`) | Free-text chat: medium effort, 512 output tokens, 1 sample, no tools |
-  | `claude` | Claude Opus 5 (`claude-opus-5`) | Free-text chat, same settings |
-  | `jev` | Jev, TypeSafe AI (v1.1; was Gemini 3.8 Flash) | **Decision-only:** typed Choice question, returns choice + probabilities |
+  | `model_key` | Model                                         | Mode                                                                           |
+  | ------------- | --------------------------------------------- | ------------------------------------------------------------------------------ |
+  | `gpt`       | GPT-6 Astra (`gpt-6-astra`)                 | Free-text chat: medium effort, 512 output tokens, 1 sample, no tools           |
+  | `claude`    | Claude Opus 5 (`claude-opus-5`)             | Free-text chat, same settings                                                  |
+  | `jev`       | Jev, TypeSafe AI (v1.1; was Gemini 3.8 Flash) | **Decision-only:** typed Choice question, returns choice + probabilities |
 
   Jev's decisions go straight into GIR and accuracy. It isn't scored for correction wording, accommodation
   or conflict, and it skips the mapper. See amendment §2.
@@ -61,13 +61,13 @@ win. Fix this file in a PR.
  collect      eligibility + gold          paraphrase + verify           run models         blinded scoring            GIR, accuracy, CIs
 ```
 
-| Stage | Owner | Main deliverable | Code (planned) |
-|---|---|---|---|
-| 1. Collect candidates, schemas, master dataset | **Advait**, project & data lead | `data/processed/questions.jsonl`, dataset docs | `src/data/` |
-| 2. Eligibility, gold labels, evidence, adjudication | **Win**, clinical-labeling lead | Gold labels, annotation guide | n/a |
-| 3. Paraphrase generation and meaning check | **Sahil**, paraphrase & quality lead | `data/processed/variants.jsonl`, QC report | `src/paraphrase/` |
-| 4. Model APIs, prompts, experiment runner | **Engineering lead** (Member 4; Abhi?, to be confirmed) | Reproducible runner, raw responses, logs | `src/run_models/` |
-| 5–6. Scoring mapper, human audit stats, metrics, plots | **Bruce**, evaluation & analysis lead | Scores, GIR, CIs, figures | `src/score/`, `src/analyze/` |
+| Stage                                                   | Owner                                       | Main deliverable                                 | Code (planned)                   |
+| ------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------ | -------------------------------- |
+| 1. Collect candidates, schemas, master dataset          | **Advait**, project & data lead       | `data/processed/questions.jsonl`, dataset docs | `src/data/`                    |
+| 2. Eligibility, gold labels, evidence, adjudication     | **Win**, clinical-labeling lead       | Gold labels, annotation guide                    | n/a                              |
+| 3. Paraphrase generation and meaning check              | **Sahil**, paraphrase & quality lead  | `data/processed/variants.jsonl`, QC report     | `src/paraphrase/`              |
+| 4. Model APIs, prompts, experiment runner               | **Abhi**, engineering lead            | Reproducible runner, raw responses, logs         | `src/run_models/`              |
+| 5–6. Scoring mapper, human audit stats, metrics, plots | **Bruce**, evaluation & analysis lead | Scores, GIR, CIs, figures                        | `src/score/`, `src/analyze/` |
 
 **Required pairings.** Advait and Win review inclusion and labels. Win and Sahil verify paraphrase meaning.
 Member 4 and Bruce agree on the response and annotation formats **before** any model run. Two reviewers
@@ -83,10 +83,11 @@ What exists today (✓) and what is planned. Create a planned directory when you
 .
 ├── README.md                     ✓ project overview
 ├── codebase.md                   ✓ this file
-├── requirements.txt              ✓ pandas, pyarrow
+├── requirements.txt              ✓ pandas, pyarrow, provider SDKs
 ├── .gitignore                    ✓ ignores .venv/, .env, __pycache__/
 ├── docs/
-│   ├── annotation_guide_v1.1.md   ✓ labeling and QC rules (Win)
+│   ├── annotation_guide_v1.2.md   ✓ labeling and QC rules (Win)
+│   ├── annotation_guide_v1.1.md   ✓ previous version, kept for reproducibility
 │   ├── proposal.pdf              ✓ proposal + execution plan
 │   ├── protocol_v1.0.pdf         ✓ Week 1 study design freeze
 │   └── protocol_v1.1_amendment.md ✓ UPHILL + Jev changes (proposed)
@@ -102,8 +103,8 @@ What exists today (✓) and what is planned. Create a planned directory when you
 ├── src/
 │   ├── main.py                   ✓ Cancer-Myth loader smoke test
 │   ├── data/                       loaders and source-to-gold mapping, one module per dataset
-│   ├── paraphrase/             ✓ generate, check, review, redo, qc (docs/paraphrase_guide.md)
-│   ├── run_models/
+│   ├── paraphrase/               ✓ generate, check, review, redo, qc (docs/paraphrase_guide.md)
+│   ├── run_models/               ✓ runner, provider clients, model settings
 │   ├── score/
 │   └── analyze/
 ├── outputs/                        responses/, annotations/, metrics/, figures/
@@ -128,24 +129,24 @@ Run scripts from the repo root. Paths in the code are relative to it.
 
 ### Cancer-Myth: `data/raw/cancer-myth/validation-00000-of-00001.parquet` (585 × 8)
 
-| Column | Notes |
-|---|---|
-| `QID` | int, source identifier, used as `source_id` |
-| `question` | patient question (verbatim) |
-| `presupposition_correction` | reference correction of the false premise |
-| `category` | myth category (e.g. `no treatment`) |
-| `from_model` | `manual` or generating model |
-| `cancer` | cancer type |
-| `source`, `source_myth` | provenance of the question and the myth |
+| Column                        | Notes                                         |
+| ----------------------------- | --------------------------------------------- |
+| `QID`                       | int, source identifier, used as `source_id` |
+| `question`                  | patient question (verbatim)                   |
+| `presupposition_correction` | reference correction of the false premise     |
+| `category`                  | myth category (e.g.`no treatment`)          |
+| `from_model`                | `manual` or generating model                |
+| `cancer`                    | cancer type                                   |
+| `source`, `source_myth`   | provenance of the question and the myth       |
 
 ### Cancer-Myth NFP controls: `data/raw/cancer-myth-nfp/nfp-00000-of-00001.parquet` (150 × 7)
 
-| Column | Notes |
-|---|---|
-| `QID` | int, starts at 1000 |
-| `question` | patient question |
-| `non_presupposition` | free-text explanation (**check its meaning before using it as a control label**; some rows read like a presupposition description) |
-| `from_model`, `cancer`, `source_type`, `source_row` | provenance |
+| Column                                                      | Notes                                                                                                                                    |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `QID`                                                     | int, starts at 1000                                                                                                                      |
+| `question`                                                | patient question                                                                                                                         |
+| `non_presupposition`                                      | free-text explanation (**check its meaning before using it as a control label**; some rows read like a presupposition description) |
+| `from_model`, `cancer`, `source_type`, `source_row` | provenance                                                                                                                               |
 
 UPHILL and CARE-Bench are not in the repo yet. The UPHILL mapping (false claim → positive, true claim →
 control, Level 2 queries, no mixture or fabricated claims) is in amendment §1. The CARE-Bench mapping is
@@ -164,22 +165,22 @@ Advait; changes go through a PR.
 
 One row per original question. Fields are from annotation guide §3.
 
-| Field | Values |
-|---|---|
-| `candidate_id` | Stable pool ID: `{onc\|ph\|tri}-{source_id}`, e.g. `onc-cm-412` |
-| `group_id` | `{onc\|ph\|tri}-{nnn}`, e.g. `onc-007`. Assigned at sampling (`null` in candidate pools). Stable, never reused |
-| `domain` | `oncology`, `public_health`, `acute_triage` |
-| `task` | `correction`, `escalation` |
-| `is_control` | bool (NFP / no-target-premise control) |
-| `source_dataset`, `source_id` | `cancer_myth`, `cancer_myth_nfp`, `uphill`, `care_bench`; e.g. `cm-412` |
-| `original_question` | verbatim |
-| `source_label_raw` | the label as supplied by the dataset |
-| `gold_label_mapped` | study label: `correction_required` / `no_correction` / `0A`–`1B` |
-| `target_false_premise` | string for positive correction items, otherwise null |
-| `source_evidence` | link / passage ID / source field |
-| `eligibility_status`, `eligibility_reason` | `include` / `exclude` / `hold` + reason (`pending` allowed in candidate pools only) |
-| `review_status` | `pending`, `independently_reviewed`, `adjudicated` |
-| `source_meta` | Object of source-specific fields for screening and stratified sampling, or `null` |
+| Field                                          | Values                                                                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `candidate_id`                               | Stable pool ID:`{onc\|ph\|tri}-{source_id}`, e.g. `onc-cm-412`                                                   |
+| `group_id`                                   | `{onc\|ph\|tri}-{nnn}`, e.g. `onc-007`. Assigned at sampling (`null` in candidate pools). Stable, never reused |
+| `domain`                                     | `oncology`, `public_health`, `acute_triage`                                                                  |
+| `task`                                       | `correction`, `escalation`                                                                                     |
+| `is_control`                                 | bool (NFP / no-target-premise control)                                                                             |
+| `source_dataset`, `source_id`              | `cancer_myth`, `cancer_myth_nfp`, `uphill`, `care_bench`; e.g. `cm-412`                                  |
+| `original_question`                          | verbatim                                                                                                           |
+| `source_label_raw`                           | the label as supplied by the dataset                                                                               |
+| `gold_label_mapped`                          | study label:`correction_required` / `no_correction` / `0A`–`1B`                                           |
+| `target_false_premise`                       | string for positive correction items, otherwise null                                                               |
+| `source_evidence`                            | link / passage ID / source field                                                                                   |
+| `eligibility_status`, `eligibility_reason` | `include` / `exclude` / `hold` + reason (`pending` allowed in candidate pools only)                        |
+| `review_status`                              | `pending`, `independently_reviewed`, `adjudicated`                                                           |
+| `source_meta`                                | Object of source-specific fields for screening and stratified sampling, or `null`                                |
 
 The schema and validator live in `src/data/schema.py`. Candidate pools in `data/processed/candidates/`
 use the `candidates` stage, and `data/processed/questions.jsonl` uses the `final` stage:
@@ -189,13 +190,13 @@ use the `candidates` stage, and `data/processed/questions.jsonl` uses the `final
 
 One row per variant, including the original. Labels are inherited from the group and never re-labeled.
 
-| Field | Values |
-|---|---|
-| `group_id` | |
-| `variant_id` | `original`, `p1`, `p2`, `p3` |
-| `text` | prompt text sent to the model |
-| `generator` | `source`, `manual`, or exact model ID |
-| `validity` | `valid`, `invalid`, `needs_review` (guide §6) |
+| Field                                | Values                                                                                                               |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `group_id`                         |                                                                                                                      |
+| `variant_id`                       | `original`, `p1`, `p2`, `p3`                                                                                 |
+| `text`                             | prompt text sent to the model                                                                                        |
+| `generator`                        | `source`, `manual`, or exact model ID                                                                            |
+| `validity`                         | `valid`, `invalid`, `needs_review` (guide §6)                                                                 |
 | `validity_reason`, `verified_by` | `verified_by` is `source` for the original and the two reviewer IDs (lowercase, joined by `;`) for paraphrases |
 
 The working copy is `data/processed/paraphrase/{set}/variants.jsonl`. `python -m src.paraphrase validate --set full --write`
@@ -210,6 +211,17 @@ Responses are **write-once**. To fix a problem, start a new `run_id` (`run-YYYYM
 (`model_key`, exact `model_version`, `prompt_version`, temperature/seed/max_tokens, tokens, latency, cost,
 timestamp) go in a **separate metadata table** keyed by `response_id`. That way reviewers and the mapper
 stay blind (guide §8).
+
+The runner (`python -m src.run_models.runner`) writes these files to the run directory:
+
+- `{model_key}.jsonl`: the response rows above. `error` is set only for a model outcome that leaves the
+  response unusable (`refusal`, or cut off at the API token cap).
+- `metadata.jsonl`: the metadata table. It also has `visible_output_tokens` and `over_visible_cap`, because
+  the 512-token limit applies to visible text and neither chat API can cap that separately from reasoning.
+- `run.json`: settings, prompt hashes and the git commit.
+- `errors.jsonl`: API failures that outlasted the retries. Rerun the same command to fill those gaps.
+
+`outputs/responses/` is git-ignored because responses can quote source-derived question text.
 
 ### 5.4 Annotation: `outputs/annotations/{run_id}/{scorer}.jsonl`
 

@@ -349,3 +349,17 @@ def test_import_rejects_adjudicated_status(dirs):
     d["review_status"] = "adjudicated"
     write_sheet(tmp / "s.csv", [d])
     assert screening.import_sheets([tmp / "s.csv"], pool_dir, decision_dir) == 1
+
+
+def test_adjudicate_reads_logs_saved_from_excel(double_reviewed):
+    """Excel's "CSV UTF-8" adds a BOM; the logs and decision files must still read by column name."""
+    pools, pool_dir, decision_dir, tmp, tri, onc = double_reviewed
+    screening.compare(pool_dir, decision_dir)
+    fill(decision_dir / screening.DISAGREEMENTS, {tri[0]: {"adjudicated_status": "exclude", "adjudicator": "bruce"}})
+    for path in (decision_dir / screening.DISAGREEMENTS, decision_dir / "acute_triage.csv"):
+        path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+    errors, _ = screening.adjudicate(pool_dir, decision_dir)
+    assert errors == 0
+    adj = screening.load_decisions("acute_triage", decision_dir / screening.ADJUDICATED)
+    assert adj[tri[0]]["eligibility_status"] == "exclude"
+    assert tri[0] in screening.load_decisions("acute_triage", decision_dir)

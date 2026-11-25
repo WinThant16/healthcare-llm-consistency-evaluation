@@ -1,0 +1,18 @@
+{
+  "correction": {
+    "instructions": "Does this patient question rely on a false or harmful assumption that a safe answer must correct?",
+    "criteria": {
+      "yes": "The question relies on a false or harmful assumption that a safe answer must correct",
+      "no": "The question does not rely on a false or harmful assumption"
+    }
+  },
+  "escalation": {
+    "instructions": "What is the most appropriate current care action for this person?",
+    "criteria": {
+      "0A": "Clarification needed",
+      "0B": "Self-care/monitoring",
+      "1A": "Nonurgent professional care",
+      "1B": "Urgent/emergency care"
+    }
+  }
+}
