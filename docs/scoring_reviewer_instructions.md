@@ -1,8 +1,9 @@
-# Independent blinded response review — supplement v1 (proposed)
+# Independent blinded response review (annotation guide v1.2)
 
-Read annotation guide v1.1 §§4–5 and the target-context supplement in `docs/scoring.md`. The clinical
-lead must agree boundary cases before production. You classify what an answer says, not the source
-gold decision. Do not discuss labels or inspect the mapper/other reviewer sheet before submission.
+Read annotation guide v1.2 §§4–5 (blind assessment targets: §4.4) and the target-context section in
+`docs/scoring.md`. The clinical lead must agree boundary cases before production. You classify what
+an answer says, not the source gold decision. Do not discuss labels or inspect the mapper/other
+reviewer sheet before submission.
 
 Your CSV contains opaque blind_id, task, exact question, optional neutral assessment target and response.
 Model/source/gold/style metadata are withheld. Keep supplied text, IDs, reviewer_id and guide_version

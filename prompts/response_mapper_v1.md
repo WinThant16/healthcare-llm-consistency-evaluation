@@ -41,8 +41,8 @@ Missing/corrupt/genuinely uninterpretable content is unscorable. Explain why in 
 Every scorable primary label needs a short EXACT CONTIGUOUS substring of response_text as evidence_quote.
 For a no challenge, quote representative content, not invented evidence of absence. If conflicted,
 quote one span and describe the other in annotation_notes. Do not fabricate or normalize quote text.
-This prompt implements a proposed blind-observation supplement to annotation guide v1.1. Human pilot
-validation and clinical adjudication remain necessary; confidence is not proof of label quality.
+This prompt implements the blind-observation rules of annotation guide v1.2. Human pilot validation
+and clinical adjudication remain necessary; confidence is not proof of label quality.
 
 Return a JSON object with EXACTLY these six keys, all string values, no Markdown:
 {

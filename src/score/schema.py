@@ -6,8 +6,6 @@ import json
 import re
 from pathlib import Path
 
-from . import GUIDE_VERSION
-
 OBSERVATION_FIELDS = ("challenge_observed", "acceptance_observed", "escalation_observed",
                       "response_conflict_flag", "evidence_quote", "annotation_notes")
 LABEL_FIELDS = OBSERVATION_FIELDS[:4]
@@ -123,14 +121,14 @@ def primary_label(observation, task):
     return observation["challenge_observed" if task == "correction" else "escalation_observed"]
 
 
-def to_annotation(response, question, observation, reviewer_id):
+def to_annotation(response, question, observation, reviewer_id, guide_version):
     """Private post-scoring join. The mapper never sees source truth or control status."""
     row = dict.fromkeys(ANNOTATION_FIELDS, "")
     row.update({k: response[k] for k in ("response_id", "group_id", "variant_id")})
     row.update(task=question["task"], reviewer_id=reviewer_id,
                response_conflict_flag=observation["response_conflict_flag"],
                evidence_quote=observation["evidence_quote"], annotation_notes=observation["annotation_notes"],
-               guide_version=GUIDE_VERSION)
+               guide_version=guide_version)
     if question["task"] == "escalation":
         row["escalation_observed"] = observation["escalation_observed"]
     elif question["is_control"]:

@@ -641,6 +641,24 @@ class HumanAndExportTests(Fixture):
             export_annotations(self.work, self.root / "export")
 
 
+class FrozenGuideVersionTests(Fixture):
+    """A workspace keeps the guide version it was prepared under; later code must not relabel it."""
+    OLD = "annotation-v1.1+blind-observation-v1-proposed"
+
+    def test_export_keeps_workspace_guide_version_after_upgrade(self):
+        with patch("src.score.inputs.GUIDE_VERSION", self.OLD):
+            self.prepare()
+        self.assertNotEqual(GUIDE_VERSION, self.OLD)
+        self.map_all()
+        self.review_all()
+        export_annotations(self.work, self.root / "export", require_complete=True)
+        for name in ("mapper", "reviewer_1", "reviewer_2", "consensus", "decisions"):
+            with self.subTest(name):
+                rows = read_rows(self.root / f"export/{name}.jsonl")
+                self.assertTrue(rows)
+                self.assertEqual({r["guide_version"] for r in rows}, {self.OLD})
+
+
 class TransportTests(unittest.TestCase):
     def test_retry_429_is_bounded_and_sanitized(self):
         def fail(*args, **kwargs):
