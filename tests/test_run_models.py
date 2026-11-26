@@ -88,6 +88,17 @@ def test_rerun_skips_saved_and_fills_failures(tmp_path):
     assert len(read_jsonl(tmp_path / "run-test" / "gpt.jsonl")) == 2
 
 
+def test_models_added_later_are_recorded_in_run_json(tmp_path):
+    runner.run(ITEMS, "run-test", ["gpt", "claude"], fake_clients(), out_dir=tmp_path, log=lambda *_: None)
+    manifest = tmp_path / "run-test" / "run.json"
+    before = json.loads(manifest.read_text())
+    runner.run(ITEMS, "run-test", ["jev"], fake_clients(), out_dir=tmp_path, log=lambda *_: None)
+    after = json.loads(manifest.read_text())
+    assert list(after["models"]) == ["gpt", "claude", "jev"]
+    assert {k: after[k] for k in before if k != "models"} == {k: before[k] for k in before if k != "models"}
+    assert all(after["models"][k] == before["models"][k] for k in before["models"])
+
+
 def test_changed_text_needs_new_run_id(tmp_path):
     runner.run(ITEMS, "run-test", ["gpt"], fake_clients(), out_dir=tmp_path)
     changed = [{**ITEMS[0], "text": "Q1 edited"}, ITEMS[1]]
