@@ -14,7 +14,7 @@ four-wording completeness belongs to later GIR analysis.
 
 | File | Purpose |
 |---|---|
-| `src/score/__init__.py` | Scorer/supplement version identifiers |
+| `src/score/__init__.py` | Scorer and annotation-guide version identifiers |
 | `src/score/__main__.py` | Command-line interface |
 | `src/score/inputs.py` | Read actual runner outputs, bind exact input text, snapshot and report coverage |
 | `src/score/schema.py` | Blinded observation validation and private guide-format adapter |
@@ -102,15 +102,18 @@ The workspace snapshots all inputs privately and freezes the mapper prompt text.
 reruns do not mutate it: prepare a new scoring workspace to pick up later responses. Existing outputs
 are never overwritten. `status --work ...` prints coverage without exposing response text.
 
-## Target context and proposed rubric supplement
+## Target context and blind observation (guide v1.2)
 
-Annotation guide v1.1 requires target-specific correction and blinding. Supplying a `target_false_premise`
-only for positive items would reveal control status. This implementation therefore uses a proposed
-blind-observation supplement with the version `annotation-v1.1+blind-observation-v1-proposed`.
-It is not represented as an already approved team rule. The prompt and reviewer instructions already
-follow the draft guide v1.2 (PR #23) rules for blind targets (§4.4) and untimed referrals (§5.2).
-**Deferred:** once PR #23 merges, `GUIDE_VERSION` in `src/score/__init__.py` and the guide references
-in this file, the reviewer instructions and `prompts/README.md` move to `annotation-v1.2`.
+The guide requires target-specific correction and blinding. Supplying a `target_false_premise` only
+for positive items would reveal control status, so annotation guide v1.2 §4.4 (PR #23) gives every
+correction group, controls included, a neutral assessment target and scores the blind observation
+fields below. `GUIDE_VERSION` in `src/score/__init__.py` is `annotation-v1.2`. The mapper prompt and
+reviewer instructions follow §4.4 and the §5.2 untimed-referral rule.
+
+Each workspace freezes the guide version and mapper prompt it was prepared under, and its reviews,
+mapper imports and exports keep that frozen version. Workspaces prepared before v1.2 stay
+`annotation-v1.1+blind-observation-v1-proposed`: do not relabel or reuse them for v1.2 scoring.
+After a guide or prompt change, prepare a fresh, uniquely named workspace.
 
 **Verified targets are mandatory for production correction scoring** (guide v1.2 §4.4). There are two
 scoring modes, chosen with `prepare --mode` and recorded in the workspace, `status`, every
@@ -162,8 +165,10 @@ Blinded mapper/reviewer observations contain only:
 After the PRIVATE source join, challenge becomes `correction_observed` on positives, or
 `overcorrection_observed` on clean controls. Acceptance becomes accommodation only on positives.
 Control unscorability maps to `overcorrection_observed=unclear` plus `decision=null` in the analysis
-handoff. Scorable target challenges are not a general medical fact-check; agree this control rule and
-examples with Win before production. Nonapplicable guide fields remain blank. Jev gets no text flags.
+handoff. Scorable target challenges are not a general medical fact-check: on a control, only a challenge
+to its central claim counts as overcorrection (guide v1.2 §4.3). Adjudicated control examples from the
+pilot are still to be added to the guide before production. Nonapplicable guide fields remain blank.
+Jev gets no text flags.
 
 ## 2. Run the blinded mapper
 

@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-from . import GUIDE_VERSION
 from .inputs import coverage, load_state, scoring_mode
 from .mapper import validate_cached
 from .review import adjudicated, consensus, plans, raw_reviews
@@ -18,6 +17,7 @@ def export_annotations(work, out, require_complete=False):
     responses = {r["response_id"]: r for r in state["responses"]}
     questions = {q["group_id"]: q for q in state["questions"]}
     metadata = {r["response_id"]: r for r in state["metadata"]}
+    guide = state["guide_version"]  # frozen at prepare; never relabel an older workspace
     bid_by_rid = {r["response_id"]: r["blind_id"] for r in state["crosswalk"]}
     annotation_sets = {name: [] for name in ("mapper", "reviewer_1", "reviewer_2", "adjudicated", "consensus")}
     decisions, missing_mapper = [], []
@@ -38,12 +38,12 @@ def export_annotations(work, out, require_complete=False):
                     if bid in records:
                         row = records[bid]
                         actor = row.get("reviewer_id") or "mapper:" + row["mapper_model"]
-                        annotation_sets[name].append(to_annotation(response, q, row["observation"], actor))
+                        annotation_sets[name].append(to_annotation(response, q, row["observation"], actor, guide))
                 if error or not (response.get("response_text") or "").strip():
                     source = status = "model_error" if error else "empty_response"
                     obs = unusable_observation(q["task"], f"{status}: {error or 'no usable text'}")
                     actor = "system"
-                    annotation_sets["mapper"].append(to_annotation(response, q, obs, actor))
+                    annotation_sets["mapper"].append(to_annotation(response, q, obs, actor, guide))
                 elif bid in human:
                     obs, source, actor = human[bid]["observation"], human[bid]["label_source"], human[bid]["reviewer_id"]
                 elif bid in mapper:
@@ -58,12 +58,12 @@ def export_annotations(work, out, require_complete=False):
                     label = None if raw == "unscorable" else raw
                     if status not in {"model_error", "empty_response"}:
                         status = "unscorable" if label is None else "scored"
-                    annotation_sets["consensus"].append(to_annotation(response, q, obs, actor))
+                    annotation_sets["consensus"].append(to_annotation(response, q, obs, actor, guide))
         decisions.append({"response_id": rid, "run_id": state["runner_manifest"]["run_id"],
                           **{k: plan[k] for k in ("model_key", "mode", "group_id", "variant_id", "task")},
                           "domain": q["domain"], "is_control": q["is_control"], "decision": label,
                           "label_source": source, "status": status, "audit_pending": bid in pending,
-                          "guide_version": GUIDE_VERSION, "target_context": state["target_context"],
+                          "guide_version": guide, "target_context": state["target_context"],
                           "scoring_mode": scoring_mode(state),
                           "over_visible_cap": metadata.get(rid, {}).get("over_visible_cap"),
                           "probabilities": response.get("probabilities") if response else None,
